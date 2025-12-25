@@ -1,8 +1,8 @@
 import { createFileRoute, useSearch, useNavigate } from '@tanstack/react-router';
 import { useState, useEffect, useRef } from 'react';
-import { exchangeCodeForToken, fetchMe } from '../server/auth';
+import { exchangeCodeForToken, fetchMe, fetchUserAchievements } from '../server/auth';
 import { clientConfig } from '../lib/client-config';
-import { UserCard } from '../components/UserCard';
+import { StoryMode } from '../components/StoryMode';
 
 // Define the search params validation
 type IndexSearch = {
@@ -24,6 +24,7 @@ function App() {
 	const navigate = useNavigate();
 
 	const [user, setUser] = useState<any>(null);
+	const [achievements, setAchievements] = useState<any[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -48,6 +49,21 @@ function App() {
 					const userData = await fetchMe({ data: tokenData.access_token } as any);
 					setUser(userData);
 
+					// Fetch user achievements
+					try {
+						const achievementsData = await fetchUserAchievements({
+							data: {
+								token: tokenData.access_token,
+								userId: userData.id
+							}
+						} as any);
+						console.log("Achievements:", achievementsData);
+						setAchievements(achievementsData || []);
+					} catch (achError) {
+						console.error("Failed to fetch achievements", achError);
+						// Don't block login if achievements fail
+					}
+
 					// Clear query params
 					navigate({ to: '/', search: () => ({ code: undefined }), replace: true });
 				} catch (err) {
@@ -69,6 +85,11 @@ function App() {
 		response_type: 'code',
 		// scope: 'public' // Add scopes if needed
 	});
+
+	// If user is logged in, show the Story Mode
+	if (user) {
+		return <StoryMode user={user} achievements={achievements} />;
+	}
 
 	return (
 		<div className="min-h-screen bg-background flex flex-col items-center justify-between p-6 relative overflow-hidden font-sans">
@@ -117,8 +138,6 @@ function App() {
 							<div className="w-12 h-12 border-8 border-primary border-t-transparent rounded-full animate-spin" />
 							<p className="text-primary font-bold animate-pulse text-xl">LOADING...</p>
 						</div>
-					) : user ? (
-						<UserCard user={user} />
 					) : (
 						<a
 							href={`${clientConfig.authUrl}?${handleLoginParams.toString()}`}

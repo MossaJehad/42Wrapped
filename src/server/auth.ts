@@ -1,3 +1,4 @@
+
 import { createServerFn } from '@tanstack/react-start';
 import { clientConfig } from '../lib/client-config';
 import { serverConfig } from './server-config';
@@ -28,6 +29,28 @@ type User42 = {
 	wallet: number;
 	correction_point: number;
 };
+
+// Assuming the shape of an Achievement based on standard 42 API responses
+export type Achievement = {
+	id: number;
+	name: string;
+	description: string;
+	tier: string;
+	kind: string;
+	visible: boolean;
+	image: string;
+	nbr_of_success: number;
+	users_url: string;
+};
+
+export type AchievementUser = {
+	id: number;
+	achievement_id: number;
+	user_id: number;
+	created_at: string;
+	updated_at: string;
+	achievement: Achievement;
+}
 
 export const exchangeCodeForToken = createServerFn({ method: "POST" })
 	.handler(async (ctx: any) => {
@@ -76,3 +99,57 @@ export const fetchMe = createServerFn()
 		const data = await response.json() as User42;
 		return data;
 	});
+
+// New function to fetch achievements
+export const fetchUserAchievements = createServerFn()
+	.handler(async (ctx: any) => {
+		const { token, userId } = ctx.data;
+
+		// 1. Fetch user's unlocked achievements (just IDs and dates)
+		const userAchUrl = `https://api.intra.42.fr/v2/achievements_users?filter[user_id]=${userId}&page[size]=100`;
+
+		const userAchResponse = await fetch(userAchUrl, {
+			headers: { Authorization: `Bearer ${token}` },
+		});
+
+		if (!userAchResponse.ok) {
+			console.error("Failed to fetch user achievements", userAchResponse.status);
+			return [];
+		}
+
+		const userAchievements = await userAchResponse.json() as any[];
+
+		// 2. Fetch ALL achievements (to get names)
+		const allAchUrl = `https://api.intra.42.fr/v2/achievements?page[size]=100`;
+
+		const allAchResponse = await fetch(allAchUrl, {
+			headers: { Authorization: `Bearer ${token}` },
+		});
+
+		if (!allAchResponse.ok) {
+			console.error("Failed to fetch all achievements", allAchResponse.status);
+			return [];
+		}
+
+		const allAchievements = await allAchResponse.json() as any[];
+
+		// 3. Create a map of achievement ID -> achievement details
+		const achievementMap = new Map<number, any>();
+		allAchievements.forEach((ach: any) => {
+			achievementMap.set(ach.id, ach);
+		});
+
+		// 4. Merge: user's unlocked achievements with their full details
+		return userAchievements.map((ua: any) => {
+			const details = achievementMap.get(ua.achievement_id) || {};
+			return {
+				id: ua.achievement_id,
+				name: details.name || "Unknown",
+				description: details.description,
+				tier: details.tier,
+				image: details.image,
+				unlocked_at: ua.created_at
+			};
+		});
+	});
+

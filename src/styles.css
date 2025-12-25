@@ -48,7 +48,7 @@ code {
 
 :root {
 	/* Core Colors */
-	--color-lime: oklch(0.88 0.25 125);
+	--color-lime: #9691FD;
 
 	/* Light Mode Defaults */
 	--background: #EFEFEB;
@@ -192,4 +192,14 @@ code {
 	h6 {
 		@apply font-black tracking-tighter;
 	}
+}
+@keyframes story-progress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+.animate-story-progress {
+  animation-name: story-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
 }
