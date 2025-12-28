@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { cn } from '../lib/utils';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MusicPlayerWidget } from './MusicPlayerWidget';
 
 interface StoryModeProps {
 	user: any;
@@ -15,7 +16,7 @@ export function StoryMode({ user, achievements = [], onClose }: StoryModeProps) 
 
 	// --- Data Processing for 2025 ---
 	const currentYear = 2025;
-	const totalSteps = 4; // Intro, Achievements, Projects, Skills
+	const totalSteps = 6; // Intro, Achievements, Projects, Skills, Bonus, Identity
 
 	// 1. Projects
 	const projects = user.projects_users || [];
@@ -25,6 +26,7 @@ export function StoryMode({ user, achievements = [], onClose }: StoryModeProps) 
 	});
 
 	const topProjects = [...projects2025].sort((a: any, b: any) => b.final_mark - a.final_mark);
+	const bonusProjects = projects2025.filter((p: any) => p.final_mark > 100);
 	const totalProjects = projects2025.length;
 	const averageMark = totalProjects > 0
 		? Math.round(projects2025.reduce((acc: number, curr: any) => acc + (curr.final_mark || 0), 0) / totalProjects)
@@ -38,11 +40,12 @@ export function StoryMode({ user, achievements = [], onClose }: StoryModeProps) 
 
 	// 3. Achievements
 	const sourceAchievements = (achievements && achievements.length > 0) ? achievements : (user.achievements || []);
+	const ownedAchievementIds = new Set(user.achievements?.map((a: any) => a.id) || []);
 
 	const achievementsFiltered = sourceAchievements.map((ach: any) => {
 		// Try to resolve name if missing (common when fetching from achievements_users endpoint)
 		let resolvedName = ach.name;
-		if (!resolvedName && user.achievements) {
+		if ((!resolvedName || resolvedName === 'Unknown') && user.achievements) {
 			const found = user.achievements.find((ua: any) => ua.id === ach.id);
 			if (found) resolvedName = found.name;
 		}
@@ -54,6 +57,11 @@ export function StoryMode({ user, achievements = [], onClose }: StoryModeProps) 
 			dateObj: ach.unlocked_at ? new Date(ach.unlocked_at) : null
 		};
 	}).filter((ach: any) => {
+		// Strict ownership check: Must be in user.achievements
+		if (!ownedAchievementIds.has(ach.id) && user.achievements && user.achievements.length > 0) {
+			return false;
+		}
+
 		// Check validity of date
 		const isValidDate = ach.dateObj && !isNaN(ach.dateObj.getTime());
 
@@ -111,34 +119,12 @@ export function StoryMode({ user, achievements = [], onClose }: StoryModeProps) 
 	}, [currentStep, isPaused, nextStep]);
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
-			{/* Controls: Pause/Play & Close */}
-			<div className="absolute top-4 right-4 z-[60] flex items-center gap-2">
-				<button
-					onClick={() => setIsPaused(!isPaused)}
-					className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white/50 hover:text-white hover:bg-white/20 transition"
-					title={isPaused ? "Play" : "Pause"}
-				>
-					{isPaused ? (
-						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-					) : (
-						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
-					)}
-				</button>
-
-				<button
-					onClick={onClose}
-					className="p-2 bg-white/10 backdrop-blur-md rounded-full text-white/50 hover:text-white hover:bg-white/20 transition"
-				>
-					<X size={24} />
-				</button>
-			</div>
-
+		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black animate-in fade-in zoom-in-95 duration-500">
 			{/* Navigation Buttons (Desktop) */}
 			<button
 				onClick={prevStep}
 				disabled={currentStep === 0}
-				className="hidden md:flex absolute left-8 top-1/2 -translate-y-1/2 z-50 text-white/50 hover:text-white transition disabled:opacity-0"
+				className="hidden cursor-pointer md:flex absolute left-64 top-1/2 -translate-y-1/2 z-50 text-white/50 hover:text-white hover:bg-white/5 rounded-full transition disabled:opacity-0"
 			>
 				<ChevronLeft size={48} />
 			</button>
@@ -146,7 +132,7 @@ export function StoryMode({ user, achievements = [], onClose }: StoryModeProps) 
 			<button
 				onClick={nextStep}
 				disabled={currentStep === totalSteps - 1}
-				className="hidden md:flex absolute right-8 top-1/2 -translate-y-1/2 z-50 text-white/50 hover:text-white transition disabled:opacity-0"
+				className="hidden cursor-pointer md:flex absolute right-64 top-1/2 -translate-y-1/2 z-50 text-white/50 hover:text-white hover:bg-white/5 rounded-full transition disabled:opacity-0"
 			>
 				<ChevronRight size={48} />
 			</button>
@@ -178,6 +164,26 @@ export function StoryMode({ user, achievements = [], onClose }: StoryModeProps) 
 					<div className="w-1/3 h-full" onClick={prevStep} />
 					<div className="w-2/3 h-full" onClick={nextStep} />
 				</div>
+
+				{/* Play/Pause Button - Bottom Right */}
+				<button
+					onClick={(e) => {
+						e.stopPropagation();
+						setIsPaused(!isPaused);
+					}}
+					className="absolute border border-white/8 bottom-6 right-6 z-50 p-3 bg-white/10 cursor-pointer hover:bg-white/20 backdrop-blur-md rounded-2xl text-white transition-all duration-300 ring-1 ring-white/10 group shadow-lg"
+					title={isPaused ? "Play" : "Pause"}
+				>
+					{isPaused ? (
+						<svg fill="currentColor" viewBox="0 0 24 24" width="24" height="24">
+							<path d="M8 5v14l11-7z" />
+						</svg>
+					) : (
+						<svg fill="currentColor" viewBox="0 0 24 24" width="24" height="24">
+							<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+						</svg>
+					)}
+				</button>
 
 				{/* Story Content */}
 				<div className="w-full h-full relative">
@@ -240,7 +246,7 @@ export function StoryMode({ user, achievements = [], onClose }: StoryModeProps) 
 								{/* Title */}
 								<div className="self-center mt-20 md:mt-10 mb-8 md:mb-12">
 									<div className="bg-white text-black font-black text-2xl px-4 py-2 uppercase tracking-tighter inline-block rotate-[-3deg] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)]">
-										My Unlocks
+										Your &nbsp; Latest <br /> Achievements
 									</div>
 								</div>
 
@@ -371,8 +377,141 @@ export function StoryMode({ user, achievements = [], onClose }: StoryModeProps) 
 						</div>
 					)}
 
+					{/* Slide 5: Bonus Projects (Over Achiever) */}
+					{currentStep === 4 && (
+						<div className="w-full h-full bg-[#FFD700] text-black flex flex-col items-center p-8 animate-in slide-in-from-right duration-300 relative overflow-hidden">
+							{/* Trippy Geometric BG */}
+							<div className="absolute inset-0 z-0 opacity-20">
+								{Array.from({ length: 12 }).map((_, i) => (
+									<div
+										key={i}
+										className="absolute border-2 border-black rounded-full"
+										style={{
+											width: `${(i + 1) * 60}px`,
+											height: `${(i + 1) * 60}px`,
+											top: '50%',
+											left: '50%',
+											transform: `translate(-50%, -50%) rotate(${i * 15}deg)`,
+										}}
+									/>
+								))}
+							</div>
+
+							<div className="relative z-10 w-full flex-1 flex flex-col justify-center">
+								<h2 className="text-6xl font-black tracking-tighter mb-2 text-center leading-[0.8]">
+									OVER
+									<br />
+									<span className="text-white drop-shadow-[4px_4px_0px_rgba(0,0,0,1)]">ACHIEVER</span>
+								</h2>
+								<p className="text-center font-bold uppercase tracking-widest opacity-80 mb-10">
+									Going above & beyond
+								</p>
+
+								<div className="space-y-4 w-full">
+									{bonusProjects.length > 0 ? (
+										bonusProjects.map((p: any) => (
+											<div key={p.id} className="relative bg-black text-[#FFD700] p-4 rounded-xl border-2 border-black transform transition hover:scale-105 hover:-rotate-1">
+												<div className="flex justify-between items-baseline">
+													<span className="text-lg font-black truncate w-2/3">{p.project.name}</span>
+													<span className="text-3xl font-black">{p.final_mark}%</span>
+												</div>
+												<div className="absolute -top-2 -right-2 bg-white text-black text-[10px] font-bold px-2 py-0.5 rounded-full border border-black">
+													BONUS
+												</div>
+											</div>
+										))
+									) : (
+										<div className="bg-black/10 p-6 rounded-2xl text-center border-2 border-black/10">
+											<p className="font-bold">No bonus projects yet.</p>
+											<p className="text-sm opacity-70">Push harder next year!</p>
+										</div>
+									)}
+								</div>
+
+								{bonusProjects.length > 0 && (
+									<div className="mt-8 text-center font-bold uppercase text-xs tracking-widest bg-black text-white py-1 px-3 rounded-full self-center">
+										{bonusProjects.length} Projects &gt; 100%
+									</div>
+								)}
+							</div>
+						</div>
+					)}
+
+					{/* Slide 6: Identity Stats (The 42 DNA) */}
+					{currentStep === 5 && (
+						<div className="w-full h-full bg-[#1db954] text-black flex flex-col items-center p-6 animate-in slide-in-from-right duration-300 relative overflow-hidden">
+							{/* Pattern BG */}
+							<div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, #000 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+
+							<div className="relative z-10 w-full h-full flex flex-col justify-center gap-6">
+								<div className="text-center">
+									<h2 className="text-5xl font-black tracking-tighter text-black inline-block border-b-4 border-black pb-2">
+										THE 42 DNA
+									</h2>
+								</div>
+
+								<div className="grid grid-cols-2 gap-4">
+									{/* Campus */}
+									<div className="bg-black text-[#1db954] p-5 rounded-2xl flex flex-col aspect-square justify-between group hover:scale-105 transition-transform">
+										<div className="text-xs font-bold uppercase tracking-widest text-[#1db954]/70">Campus</div>
+										<div className="text-2xl font-black break-words leading-tight">
+											{user.campus?.[0]?.name || "42"}
+										</div>
+										<div className="w-8 h-8 rounded-full bg-[#1db954] text-black flex items-center justify-center font-bold">
+											C
+										</div>
+									</div>
+
+									{/* Wallet */}
+									<div className="bg-white text-black p-5 rounded-2xl flex flex-col aspect-square justify-between border-2 border-black group hover:scale-105 transition-transform">
+										<div className="text-xs font-bold uppercase tracking-widest opacity-60">Wallet</div>
+										<div className="text-5xl font-black">
+											{user.wallet}
+											<span className="text-lg align-top">₳</span>
+										</div>
+										<div className="text-xs font-bold">Manage it wisely</div>
+									</div>
+
+									{/* Eval Points */}
+									<div className="bg-[#191414] text-white p-5 rounded-2xl flex flex-col aspect-square justify-between group hover:scale-105 transition-transform">
+										<div className="text-xs font-bold uppercase tracking-widest opacity-60">Eval Points</div>
+										<div className="text-5xl font-black text-[#FFD700] drop-shadow-lg">
+											{user.correction_point}
+										</div>
+										<div className="text-xs font-medium opacity-80">Community Service</div>
+									</div>
+
+									{/* Pool Year */}
+									<div className="bg-[#535353] text-white p-5 rounded-2xl flex flex-col aspect-square justify-between border-2 border-black group hover:scale-105 transition-transform">
+										<div className="text-xs font-bold uppercase tracking-widest opacity-80">Pool</div>
+										<div>
+											<div className="text-xl font-bold capitalize">{user.pool_month}</div>
+											<div className="text-4xl font-black">{user.pool_year}</div>
+										</div>
+									</div>
+								</div>
+
+								<div className="bg-black/10 backdrop-blur-sm p-4 rounded-xl border-2 border-black/10 mt-2">
+									<div className="flex justify-between items-center">
+										<span className="font-bold text-sm uppercase">Current Level</span>
+										<span className="font-mono font-black text-2xl">
+											{activeCursus.level?.toFixed(2) || "0.00"}
+										</span>
+									</div>
+									<div className="w-full h-3 bg-white/50 rounded-full mt-2 overflow-hidden border border-black/10">
+										<div
+											className="h-full bg-black"
+											style={{ width: `${(activeCursus.level % 1) * 100}%` }}
+										/>
+									</div>
+								</div>
+							</div>
+						</div>
+					)}
 				</div>
 			</div>
+
+			<MusicPlayerWidget />
 		</div>
 	);
 }
