@@ -19,7 +19,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 	// --- Data Processing for 2025 ---
 	const currentYear = 2025;
-	const totalSteps = 9; // Intro, Achievements, Projects, Skills, LogTime, Feedback, GroupProjects, Bonus, Identity
+	const totalSteps = 10; // Intro, Achievements, Projects, Skills, LogTime, Feedback, GroupProjects, Bonus, Identity, Summary
 
 	// 1. Projects
 	const projects = user.projects_users || [];
@@ -647,7 +647,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 											<div className="flex-1 flex flex-col justify-center items-center text-center gap-6 w-full">
 												<div className="transform transition hover:scale-105 duration-500">
 													<div className="text-sm font-bold opacity-80 uppercase tracking-widest mb-2">
-														Most Productive day
+														Most Productive Day
 													</div>
 													<div className="text-6xl md:text-7xl font-black text-[#F1C40F] drop-shadow-[6px_6px_0px_rgba(0,0,0,0.3)]">
 														{peakDayFull}
@@ -855,7 +855,6 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 										<div className="text-5xl font-black text-[#FFD700] drop-shadow-lg">
 											{user.correction_point}
 										</div>
-										<div className="text-xs font-medium opacity-80">Community Service</div>
 									</div>
 
 									{/* Pool Year */}
@@ -883,6 +882,144 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 									</div>
 								</div>
 							</div>
+						</div>
+					)}
+					{/* Step 9: Final Summary Card */}
+					{currentStep === 9 && (
+						<div className="w-full h-full bg-[#121212] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-500 relative overflow-hidden">
+							<div
+								id="summary-card"
+								className="w-full h-full flex flex-col bg-gradient-to-br from-[#1e1e1e] to-[#000] rounded-2xl p-6 relative"
+							>
+								{/* Decorative Background */}
+								<div className="absolute inset-0 z-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
+
+								{/* Header */}
+								<div className="relative z-10 flex items-center gap-4 mb-6">
+									<div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-lg">
+										{user.image?.link ? (
+											<img src={user.image.link} alt={user.login} className="w-full h-full object-cover" />
+										) : (
+											<div className="w-full h-full bg-gray-900 flex items-center justify-center text-2xl font-black">
+												{user.login?.[0]?.toUpperCase()}
+											</div>
+										)}
+									</div>
+									<div>
+										<h2 className="text-3xl font-black tracking-tighter leading-none text-white">
+											{user.displayname || user.login}
+										</h2>
+										<p className="font-mono text-sm opacity-60">@{user.login}</p>
+									</div>
+									<div className="ml-auto">
+										<div className="bg-[#FFE600] text-black font-black text-xs px-2 py-1 rounded rotate-3 shadow-[2px_2px_0px_white]">
+											2025 WRAPPED
+										</div>
+									</div>
+								</div>
+
+								{/* Stats Grid */}
+								<div className="relative z-10 grid grid-cols-2 gap-4 flex-1">
+									{/* Top Projects */}
+									<div className="bg-[#E91E63] p-4 rounded-xl text-white flex flex-col justify-between shadow-lg">
+										<div className="text-xs font-bold uppercase opacity-80">Top Projects</div>
+										<div>
+											<div className="text-4xl font-black">{totalProjects}</div>
+											<div className="text-[10px] leading-tight opacity-90 mt-1">
+												Highest: {topProjects[0]?.final_mark || 0}%
+											</div>
+										</div>
+									</div>
+
+									{/* Time Stats */}
+									<div className="bg-[#3498DB] p-4 rounded-xl text-white flex flex-col justify-between shadow-lg col-span-2">
+										<div className="flex justify-between items-start">
+											<div>
+												<div className="text-xs font-bold uppercase opacity-80">Total Tracked</div>
+												<div className="text-3xl font-black">{formatDuration(totalLogMinutes)}</div>
+											</div>
+											<div className="text-right">
+												<div className="text-xs font-bold uppercase opacity-80">Longest Day</div>
+												<div className="text-xl font-black">{formatDuration(maxLogMinutes)}</div>
+											</div>
+										</div>
+
+										<div className="mt-2 pt-2 border-t border-white/20 flex justify-between items-center">
+											<div className="text-xs font-bold uppercase opacity-80">Peak Day</div>
+											<div className="text-lg font-black text-[#F1C40F]">
+												{(() => {
+													const dayCounts = [0, 0, 0, 0, 0, 0, 0];
+													dayIntervals.forEach((intervals) => {
+														intervals.forEach(i => {
+															const d = new Date(i.start).getDay();
+															dayCounts[d] += (i.end - i.start) / 1000 / 60;
+														});
+													});
+													const maxDayIndex = dayCounts.indexOf(Math.max(...dayCounts));
+													return ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][maxDayIndex];
+												})()}
+											</div>
+										</div>
+									</div>
+
+									{/* Skills */}
+									<div className="bg-[#9B59B6] p-4 rounded-xl text-white flex flex-col justify-between shadow-lg">
+										<div className="text-xs font-bold uppercase opacity-80 mb-1">Top Skill</div>
+										<div className="text-lg font-black truncate">{topSkills[0]?.name || "N/A"}</div>
+										<div className="text-xs font-bold bg-black/20 px-2 py-0.5 rounded w-fit mt-1">
+											Lvl {activeCursus.level?.toFixed(2)}
+										</div>
+									</div>
+
+									{/* Achievements */}
+									<div className="bg-[#2ECC71] p-4 rounded-xl text-black flex flex-col justify-between shadow-lg">
+										<div className="text-xs font-bold uppercase opacity-70">Unlocks</div>
+										<div className="text-4xl font-black">{achievementsFiltered.length}</div>
+									</div>
+
+									{/* Bonus */}
+									<div className="bg-[#F1C40F] p-4 rounded-xl text-black flex flex-col justify-between shadow-lg">
+										<div className="text-xs font-bold uppercase opacity-70">Bonus</div>
+										<div className="text-4xl font-black">{bonusProjects.length}</div>
+									</div>
+								</div>
+
+								{/* Footer */}
+								<div className="relative z-10 mt-6 text-center">
+									<p className="text-[10px] font-mono opacity-50 mb-1 tracking-widest">42wrapped.up.railway.app</p>
+									<div className="font-black text-4xl tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-400 to-white opacity-20 uppercase">
+										42 Wrapped
+									</div>
+								</div>
+							</div>
+
+							{/* Download Button (Overlay) */}
+							<button
+								onClick={async () => {
+									const node = document.getElementById('summary-card');
+									if (node) {
+										try {
+											// Dynamic import to avoid SSR issues if any, though here it's client side
+											const { toPng } = await import('html-to-image');
+											const dataUrl = await toPng(node, { skipFonts: true });
+											const link = document.createElement('a');
+											link.download = `42wrapped-${user.login}-2025.png`;
+											link.href = dataUrl;
+											link.click();
+										} catch (err) {
+											console.error('Failed to download image', err);
+										}
+									}
+								}}
+								className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 bg-white text-black font-bold px-6 py-3 rounded-full flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+							>
+								<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+									<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+									<polyline points="7 10 12 15 17 10" />
+									<line x1="12" y1="15" x2="12" y2="3" />
+								</svg>
+								Save as Image
+							</button>
 						</div>
 					)}
 				</div>
