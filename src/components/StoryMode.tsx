@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { cn } from '../lib/utils';
-import { ChevronLeft, ChevronRight, Clock, Users, Star } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Users } from 'lucide-react';
 import { MusicPlayerWidget } from './MusicPlayerWidget';
 
 interface StoryModeProps {
@@ -13,7 +13,7 @@ interface StoryModeProps {
 	onClose?: () => void;
 }
 
-export function StoryMode({ user, achievements = [], locations = [], evaluations = [], teams = [], onClose }: StoryModeProps) {
+export function StoryMode({ user, achievements = [], locations = [], teams = [], onClose }: StoryModeProps) {
 	const [currentStep, setCurrentStep] = useState(0);
 	const [isPaused, setIsPaused] = useState(false);
 
@@ -25,7 +25,7 @@ export function StoryMode({ user, achievements = [], locations = [], evaluations
 	const projects = user.projects_users || [];
 	const projects2025 = projects.filter((p: any) => {
 		if (!p.marked_at) return false;
-		return new Date(p.marked_at).getFullYear() === currentYear && p.status === 'finished';
+		return new Date(p.marked_at).getFullYear() === currentYear && p.status === 'finished' && p['validated?'];
 	});
 
 	const topProjects = [...projects2025].sort((a: any, b: any) => b.final_mark - a.final_mark);
@@ -37,15 +37,14 @@ export function StoryMode({ user, achievements = [], locations = [], evaluations
 
 	// 2. Skills
 	const cursusUsers = user.cursus_users || [];
-	const activeCursus = cursusUsers.find((cu: any) => cu.skills && cu.skills.length > 0) || cursusUsers[0];
+	// Prioritize "main" cursus (Core) or fallback to the one with highest level / most skills if main not found
+	const activeCursus = cursusUsers.find((cu: any) => cu.cursus?.kind === 'main' || cu.cursus?.name === '42cursus')
+		|| cursusUsers.find((cu: any) => cu.skills && cu.skills.length > 0)
+		|| cursusUsers[0];
 	const skills = activeCursus?.skills || [];
 
-	// DEBUG: Skills logging
-	console.group("Skills Debugging");
-	console.log("All Cursus Users:", cursusUsers);
-	console.log("Selected Active Cursus:", activeCursus);
-	console.log("Raw Skills List:", skills);
 	console.groupEnd();
+
 
 	const topSkills = [...skills].sort((a: any, b: any) => b.level - a.level).slice(0, 5);
 
@@ -54,30 +53,87 @@ export function StoryMode({ user, achievements = [], locations = [], evaluations
 	const fourMonthsAgo = new Date();
 	fourMonthsAgo.setMonth(now.getMonth() - 4);
 
-	// Create a map of date -> minutes logged
-	const logTimeMap = new Map<string, number>();
-	let totalLogMinutes = 0;
+	// Helper to process intervals
+	const dayIntervals = new Map<string, Array<{ start: number, end: number }>>();
 
 	locations.forEach((loc: any) => {
-		const begin = new Date(loc.begin_at);
-		const end = loc.end_at ? new Date(loc.end_at) : new Date();
+		let currentStr = loc.begin_at;
+		let endStr = loc.end_at;
+		if (!currentStr) return;
 
-		if (begin < fourMonthsAgo) return; // Skip older than 4 months
+		let start = new Date(currentStr);
+		let end = endStr ? new Date(endStr) : new Date();
 
-		// Simple duration in minutes
-		const durationMs = end.getTime() - begin.getTime();
-		const durationMinutes = Math.floor(durationMs / 1000 / 60);
+		// Clip to 4 months ago
+		if (end < fourMonthsAgo) return;
+		if (start < fourMonthsAgo) start = fourMonthsAgo;
+		if (start >= end) return;
 
-		if (durationMinutes <= 0) return;
+		// Split across midnights
+		while (start < end) {
+			const dateKey = start.toDateString();
 
-		const dateKey = begin.toDateString();
-		logTimeMap.set(dateKey, (logTimeMap.get(dateKey) || 0) + durationMinutes);
-		totalLogMinutes += durationMinutes;
+			// End of this day (23:59:59.999)
+			const endOfDay = new Date(start);
+			endOfDay.setHours(23, 59, 59, 999);
+
+			// The explicit end of this segment is either the session end or end of day
+			const segmentEnd = end < endOfDay ? end : endOfDay;
+
+			// Add to map
+			if (!dayIntervals.has(dateKey)) {
+				dayIntervals.set(dateKey, []);
+			}
+			dayIntervals.get(dateKey)?.push({
+				start: start.getTime(),
+				end: segmentEnd.getTime()
+			});
+
+			// Next iteration starts at 00:00:00 of next day
+			start = new Date(segmentEnd.getTime() + 1);
+		}
 	});
 
-	const logDays = Array.from(logTimeMap.values());
-	const maxLogMinutes = logDays.length > 0 ? Math.max(...logDays) : 0;
-	const avgLogMinutes = logDays.length > 0 ? Math.round(totalLogMinutes / logDays.length) : 0;
+	// Process each day: Merge overlaps and sum duration
+	let totalLogMinutes = 0;
+	const dailyMinutes: number[] = [];
+
+	dayIntervals.forEach((intervals) => {
+		if (intervals.length === 0) return;
+
+		// Sort by start time
+		intervals.sort((a, b) => a.start - b.start);
+
+		// Merge
+		const merged = [];
+		let current = intervals[0];
+
+		for (let i = 1; i < intervals.length; i++) {
+			const next = intervals[i];
+			if (current.end >= next.start) {
+				// Overlap or adjacent, merge
+				current.end = Math.max(current.end, next.end);
+			} else {
+				// No overlap, push current and move to next
+				merged.push(current);
+				current = next;
+			}
+		}
+		merged.push(current);
+
+		// Sum
+		let dayMinutes = 0;
+		merged.forEach(interval => {
+			const m = Math.floor((interval.end - interval.start) / 1000 / 60);
+			dayMinutes += m;
+		});
+
+		dailyMinutes.push(dayMinutes);
+		totalLogMinutes += dayMinutes;
+	});
+
+	const maxLogMinutes = dailyMinutes.length > 0 ? Math.max(...dailyMinutes) : 0;
+	const avgLogMinutes = dailyMinutes.length > 0 ? Math.round(totalLogMinutes / dailyMinutes.length) : 0;
 
 	// Formatting helpers
 	const formatDuration = (mins: number) => {
@@ -94,10 +150,7 @@ export function StoryMode({ user, achievements = [], locations = [], evaluations
 	// For now, let's calculate average 'final_mark' received if available, or just guess based on likely data.
 	// If the user wants the "Average Feedback" (stars 1-5), we need that specific field.
 	// Fallback: If evaluations have 'feedback_rating' (user as corrector rating), use that.
-	const ratedEvals = evaluations.filter((e: any) => e.feedback_rating !== null && e.feedback_rating !== undefined);
-	const avgFeedback = ratedEvals.length > 0
-		? (ratedEvals.reduce((acc: number, curr: any) => acc + (curr.feedback_rating || 0), 0) / ratedEvals.length).toFixed(1)
-		: "N/A";
+
 
 	// 6. Group Projects
 	// Filter teams that have more than 1 user and were active in 2025
@@ -427,7 +480,7 @@ export function StoryMode({ user, achievements = [], locations = [], evaluations
 										Top Highlights
 									</p>
 									<div className="space-y-4">
-										{topProjects.slice(0, 3).map((p: any) => (
+										{topProjects.slice(0, 5).map((p: any) => (
 											<div key={p.id} className="flex items-center justify-between border-b border-white/10 pb-2 last:border-0">
 												<span className="font-bold text-lg truncate w-2/3">{p.project.name}</span>
 												<span className={`font-black text-xl ${p.final_mark >= 100 ? 'text-[#00E5FF]' : 'text-white'}`}>
@@ -480,7 +533,7 @@ export function StoryMode({ user, achievements = [], locations = [], evaluations
 												<div
 													className="h-full bg-gradient-to-r from-yellow-300 via-white to-yellow-300 rounded-full"
 													style={{
-														width: `${Math.min((skill.level / 21) * 100, 100)}%`,
+														width: `${Math.min((skill.level / 10) * 100, 100)}%`,
 														transitionDelay: `${index * 100}ms`
 													}}
 												/>
@@ -514,8 +567,8 @@ export function StoryMode({ user, achievements = [], locations = [], evaluations
 									</h2>
 								</div>
 
-								<p className="font-mono text-sm uppercase opacity-70 mb-8 border-b border-white/20 pb-2">
-									Last 4 Months Activity
+								<p className="font-mono font-bold text-sm uppercase opacity-88 mb-8 border-b border-white/20 pb-2">
+									Last <span className="bg-white text-[#000] px-1.5 rounded mx-1 text-base font-black border-2 border-[#3498DB] shadow-[2px_2px_0px_#3498DB] transform -rotate-6 inline-block">4</span> Months Activity
 								</p>
 
 								<div className="space-y-6 w-full max-w-xs mx-auto">
@@ -550,32 +603,91 @@ export function StoryMode({ user, achievements = [], locations = [], evaluations
 						</div>
 					)}
 
-					{/* Step 5: Feedback (Evaluations) */}
+					{/* Step 5: The Rhythm (Weekly Activity) */}
 					{currentStep === 5 && (
 						<div className="w-full h-full bg-[#8E44AD] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-300 relative overflow-hidden">
 							<div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
 
-							<div className="relative z-10 w-full h-full flex flex-col justify-center items-center text-center">
-								<div className="mb-6">
-									<Star size={60} className="text-[#F1C40F] fill-[#F1C40F] animate-bounce" />
+							<div className="relative z-10 w-full h-full flex flex-col justify-center mt-10">
+								<div className="mb-4 flex flex-col items-center text-center">
+									<h2 className="text-5xl font-black uppercase tracking-tighter leading-none mb-2">
+										The<br /><span className="text-[#F1C40F]">Rhythm</span>
+									</h2>
+									<p className="font-mono text-xs opacity-70 uppercase tracking-widest pl-1">
+										Your Weekly Flow
+									</p>
 								</div>
 
-								<h2 className="text-5xl font-black uppercase tracking-tighter mb-4">
-									Community<br />Vibes
-								</h2>
+								{/* Calculation Logic (Inline) */}
+								{(() => {
+									const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+									const dayCounts = [0, 0, 0, 0, 0, 0, 0];
 
-								<div className="bg-white text-[#8E44AD] p-8 rounded-full aspect-square flex flex-col items-center justify-center border-8 border-black/10 shadow-2xl mb-8 transform hover:scale-105 transition-transform">
-									<div className="text-7xl font-black tracking-tighter">
-										{avgFeedback}
-									</div>
-									<div className="text-sm font-bold uppercase tracking-widest bg-[#8E44AD] text-white px-3 py-1 rounded-full mt-2">
-										Avg Rating
-									</div>
-								</div>
+									// Reuse dayIntervals from Step 4 if possible, or recalculate briefly
+									// Since dayIntervals is in scope (calculated above), we iterate it.
+									dayIntervals.forEach((intervals, dateKey) => {
+										const date = new Date(dateKey);
+										const dayIndex = date.getDay(); // 0 = Sun
 
-								<p className="max-w-[200px] text-sm opacity-80 font-medium leading-relaxed">
-									Based on the feedback you've received in recent evaluations.
-								</p>
+										let minutes = 0;
+										intervals.forEach(i => {
+											minutes += (i.end - i.start) / 1000 / 60;
+										});
+										dayCounts[dayIndex] += minutes;
+									});
+
+									const maxMinutes = Math.max(...dayCounts, 1); // Avoid div by 0
+									const maxDayIndex = dayCounts.indexOf(Math.max(...dayCounts));
+									const peakDayFull = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][maxDayIndex];
+
+									return (
+										<div className="w-full flex-1 flex flex-col items-center justify-between py-4">
+
+											{/* Peak Day Display */}
+											<div className="flex-1 flex flex-col justify-center items-center text-center gap-6 w-full">
+												<div className="transform transition hover:scale-105 duration-300">
+													<div className="text-sm font-bold opacity-80 uppercase tracking-widest mb-2">
+														Most Productive day
+													</div>
+													<div className="text-6xl md:text-7xl font-black text-[#F1C40F] drop-shadow-[6px_6px_0px_rgba(0,0,0,0.3)]">
+														{peakDayFull}
+													</div>
+												</div>
+
+												<p className="max-w-[280px] text-lg font-medium leading-relaxed opacity-90 bg-black/10 p-4 rounded-xl backdrop-blur-sm border border-white/10">
+													"You were absolutely unstoppable this month. Whatever coffee you were drinking, keep buying it."
+												</p>
+											</div>
+
+											{/* Bar Chart */}
+											<div className="w-full h-40 flex items-end justify-between gap-2 px-4 pb-4">
+												{dayCounts.map((minutes, idx) => {
+													const heightPercent = Math.max((minutes / maxMinutes) * 100, 10); // Min 10% for visibility
+													const isPeak = idx === maxDayIndex;
+
+													return (
+														<div key={idx} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end">
+															<div className="w-full relative flex items-end justify-center h-full">
+																<div
+																	className={`w-full rounded-t-lg transition-all duration-1000 ease-out ${isPeak ? 'bg-[#F1C40F] shadow-[0_0_15px_rgba(241,196,15,0.6)]' : 'bg-white/30 group-hover:bg-white/50'}`}
+																	style={{ height: `${heightPercent}%` }}
+																>
+																</div>
+																{/* Tooltipish count */}
+																<div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] font-bold px-2 py-1 rounded whitespace-nowrap pointer-events-none transition-opacity z-20">
+																	{Math.round(minutes / 60)}h
+																</div>
+															</div>
+															<div className={`text-xs font-black uppercase tracking-tighter ${isPeak ? 'text-[#F1C40F]' : 'text-white/50'}`}>
+																{daysOfWeek[idx]}
+															</div>
+														</div>
+													);
+												})}
+											</div>
+										</div>
+									);
+								})()}
 							</div>
 						</div>
 					)}

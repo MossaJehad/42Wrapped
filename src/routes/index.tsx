@@ -109,6 +109,8 @@ function App() {
 						console.error("Failed to fetch teams", teamError);
 					}
 
+
+
 					// Clear query params
 					navigate({ to: '/', search: () => ({ code: undefined }), replace: true });
 				} catch (err) {
