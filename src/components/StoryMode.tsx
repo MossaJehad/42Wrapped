@@ -1,22 +1,25 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { cn } from '../lib/utils';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Users, Star } from 'lucide-react';
 import { MusicPlayerWidget } from './MusicPlayerWidget';
 
 interface StoryModeProps {
 	user: any;
 	achievements?: any[];
+	locations?: any[];
+	evaluations?: any[];
+	teams?: any[];
 	onClose?: () => void;
 }
 
-export function StoryMode({ user, achievements = [], onClose }: StoryModeProps) {
+export function StoryMode({ user, achievements = [], locations = [], evaluations = [], teams = [], onClose }: StoryModeProps) {
 	const [currentStep, setCurrentStep] = useState(0);
 	const [isPaused, setIsPaused] = useState(false);
 
 	// --- Data Processing for 2025 ---
 	const currentYear = 2025;
-	const totalSteps = 6; // Intro, Achievements, Projects, Skills, Bonus, Identity
+	const totalSteps = 9; // Intro, Achievements, Projects, Skills, LogTime, Feedback, GroupProjects, Bonus, Identity
 
 	// 1. Projects
 	const projects = user.projects_users || [];
@@ -36,7 +39,84 @@ export function StoryMode({ user, achievements = [], onClose }: StoryModeProps) 
 	const cursusUsers = user.cursus_users || [];
 	const activeCursus = cursusUsers.find((cu: any) => cu.skills && cu.skills.length > 0) || cursusUsers[0];
 	const skills = activeCursus?.skills || [];
+
+	// DEBUG: Skills logging
+	console.group("Skills Debugging");
+	console.log("All Cursus Users:", cursusUsers);
+	console.log("Selected Active Cursus:", activeCursus);
+	console.log("Raw Skills List:", skills);
+	console.groupEnd();
+
 	const topSkills = [...skills].sort((a: any, b: any) => b.level - a.level).slice(0, 5);
+
+	// 4. Log Time (Last 4 Months)
+	const now = new Date();
+	const fourMonthsAgo = new Date();
+	fourMonthsAgo.setMonth(now.getMonth() - 4);
+
+	// Create a map of date -> minutes logged
+	const logTimeMap = new Map<string, number>();
+	let totalLogMinutes = 0;
+
+	locations.forEach((loc: any) => {
+		const begin = new Date(loc.begin_at);
+		const end = loc.end_at ? new Date(loc.end_at) : new Date();
+
+		if (begin < fourMonthsAgo) return; // Skip older than 4 months
+
+		// Simple duration in minutes
+		const durationMs = end.getTime() - begin.getTime();
+		const durationMinutes = Math.floor(durationMs / 1000 / 60);
+
+		if (durationMinutes <= 0) return;
+
+		const dateKey = begin.toDateString();
+		logTimeMap.set(dateKey, (logTimeMap.get(dateKey) || 0) + durationMinutes);
+		totalLogMinutes += durationMinutes;
+	});
+
+	const logDays = Array.from(logTimeMap.values());
+	const maxLogMinutes = logDays.length > 0 ? Math.max(...logDays) : 0;
+	const avgLogMinutes = logDays.length > 0 ? Math.round(totalLogMinutes / logDays.length) : 0;
+
+	// Formatting helpers
+	const formatDuration = (mins: number) => {
+		const h = Math.floor(mins / 60);
+		const m = mins % 60;
+		return `${h}h ${m}m`;
+	};
+
+	// 5. Feedback (Evaluations)
+	// Assuming 'evaluations' contains scale_teams where user is the corrector or corrected
+	// If we want "Average Feedback of the user", we usually look at ratings received.
+	// 42 API structure: scale_teams has 'final_mark' (grade) and sometimes 'feedback' (text).
+	// Stars usually come from 'feedback_rating' if available, or we might be looking at correctors' ratings.
+	// For now, let's calculate average 'final_mark' received if available, or just guess based on likely data.
+	// If the user wants the "Average Feedback" (stars 1-5), we need that specific field.
+	// Fallback: If evaluations have 'feedback_rating' (user as corrector rating), use that.
+	const ratedEvals = evaluations.filter((e: any) => e.feedback_rating !== null && e.feedback_rating !== undefined);
+	const avgFeedback = ratedEvals.length > 0
+		? (ratedEvals.reduce((acc: number, curr: any) => acc + (curr.feedback_rating || 0), 0) / ratedEvals.length).toFixed(1)
+		: "N/A";
+
+	// 6. Group Projects
+	// Filter teams that have more than 1 user and were active in 2025
+	const groupTeams = teams.filter((t: any) => {
+		// Check dates (created_at or updated_at in 2025)
+		const copyDate = t.created_at || t.updated_at;
+		if (!copyDate) return false;
+		const d = new Date(copyDate);
+		if (d.getFullYear() !== currentYear) return false;
+
+		// Check size (if users list is populated or 'users_count' exists?)
+		// API usually returns 'users' array in team object
+		if (t.users && t.users.length > 1) return true;
+
+		// Fallback if users array not fully populated but we assume "Team" endpoint implies potential groups?
+		// Actually, solo projects also have "teams".
+		// Best proxy for "Group Project" without full project config is > 1 user.
+		return false;
+	});
 
 	// 3. Achievements
 	const sourceAchievements = (achievements && achievements.length > 0) ? achievements : (user.achievements || []);
@@ -193,7 +273,7 @@ export function StoryMode({ user, achievements = [], onClose }: StoryModeProps) 
 						<div className="w-full h-full bg-[#7000FF] text-white flex flex-col items-center justify-center p-8 animate-in fade-in duration-300 relative overflow-hidden">
 							{/* Background Sunburst Effect */}
 							<div className="absolute inset-0 flex items-center justify-center z-0 opacity-20">
-								<div className="w-[800px] h-[800px] bg-[conic-gradient(from_0deg_at_50%_50%,_transparent_0deg,_#000_20deg,_transparent_40deg,_#000_60deg,_transparent_80deg,_#000_100deg,_transparent_120deg,_#000_140deg,_transparent_160deg,_#000_180deg,_transparent_200deg,_#000_220deg,_transparent_240deg,_#000_260deg,_transparent_280deg,_#000_300deg,_transparent_320deg,_#000_340deg,_transparent_360deg)] animate-[spin_20s_linear_infinite]" />
+								<div className="min-w-[1200px] min-h-[1200px] bg-[conic-gradient(from_0deg_at_50%_50%,_transparent_0deg,_#000_20deg,_transparent_40deg,_#000_60deg,_transparent_80deg,_#000_100deg,_transparent_120deg,_#000_140deg,_transparent_160deg,_#000_180deg,_transparent_200deg,_#000_220deg,_transparent_240deg,_#000_260deg,_transparent_280deg,_#000_300deg,_transparent_320deg,_#000_340deg,_transparent_360deg)] animate-[spin_20s_linear_infinite]" />
 							</div>
 
 							<div className="relative z-10 flex flex-col items-center">
@@ -418,8 +498,142 @@ export function StoryMode({ user, achievements = [], onClose }: StoryModeProps) 
 						</div>
 					)}
 
-					{/* Slide 5: Bonus Projects (Over Achiever) */}
+					{/* Step 4: Log Time Stats */}
 					{currentStep === 4 && (
+						<div className="w-full h-full bg-[#2C3E50] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-300 relative overflow-hidden">
+							<div className="absolute inset-0 opacity-10 pointer-events-none">
+								<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] border-[2px] border-white rounded-full animate-[spin_60s_linear_infinite]" />
+								<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] border-[2px] border-white rounded-full animate-[spin_40s_linear_infinite_reverse]" />
+							</div>
+
+							<div className="relative z-10 w-full h-full flex flex-col justify-center">
+								<div className="flex items-center gap-3 mb-8">
+									<Clock size={40} className="text-[#3498DB]" />
+									<h2 className="text-4xl font-black uppercase tracking-tighter">
+										Time<br />Machine
+									</h2>
+								</div>
+
+								<p className="font-mono text-sm uppercase opacity-70 mb-8 border-b border-white/20 pb-2">
+									Last 4 Months Activity
+								</p>
+
+								<div className="space-y-6 w-full max-w-xs mx-auto">
+									<div className="bg-black/20 p-5 rounded-2xl border border-white/10 backdrop-blur-sm">
+										<div className="text-3xl font-black text-[#3498DB]">
+											{formatDuration(maxLogMinutes)}
+										</div>
+										<div className="text-xs uppercase font-bold opacity-60 mt-1">
+											Longest Day
+										</div>
+									</div>
+
+									<div className="bg-black/20 p-5 rounded-2xl border border-white/10 backdrop-blur-sm">
+										<div className="text-3xl font-black text-white">
+											{formatDuration(avgLogMinutes)}
+										</div>
+										<div className="text-xs uppercase font-bold opacity-60 mt-1">
+											Daily Average
+										</div>
+									</div>
+
+									<div className="bg-white/10 p-5 rounded-2xl border border-white/10 backdrop-blur-sm">
+										<div className="text-3xl font-black text-[#FFD700]">
+											{formatDuration(totalLogMinutes)}
+										</div>
+										<div className="text-xs uppercase font-bold opacity-60 mt-1">
+											Total Tracked
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					)}
+
+					{/* Step 5: Feedback (Evaluations) */}
+					{currentStep === 5 && (
+						<div className="w-full h-full bg-[#8E44AD] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-300 relative overflow-hidden">
+							<div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
+
+							<div className="relative z-10 w-full h-full flex flex-col justify-center items-center text-center">
+								<div className="mb-6">
+									<Star size={60} className="text-[#F1C40F] fill-[#F1C40F] animate-bounce" />
+								</div>
+
+								<h2 className="text-5xl font-black uppercase tracking-tighter mb-4">
+									Community<br />Vibes
+								</h2>
+
+								<div className="bg-white text-[#8E44AD] p-8 rounded-full aspect-square flex flex-col items-center justify-center border-8 border-black/10 shadow-2xl mb-8 transform hover:scale-105 transition-transform">
+									<div className="text-7xl font-black tracking-tighter">
+										{avgFeedback}
+									</div>
+									<div className="text-sm font-bold uppercase tracking-widest bg-[#8E44AD] text-white px-3 py-1 rounded-full mt-2">
+										Avg Rating
+									</div>
+								</div>
+
+								<p className="max-w-[200px] text-sm opacity-80 font-medium leading-relaxed">
+									Based on the feedback you've received in recent evaluations.
+								</p>
+							</div>
+						</div>
+					)}
+
+					{/* Step 6: Group Projects */}
+					{currentStep === 6 && (
+						<div className="w-full h-full bg-[#E74C3C] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-300 relative overflow-hidden">
+							<div className="absolute inset-0 opacity-20 pointer-events-none">
+								<Users size={400} className="absolute -bottom-20 -right-20 rotate-12 opacity-30" />
+							</div>
+
+							<div className="relative z-10 w-full h-full flex flex-col pt-12">
+								<h2 className="text-5xl font-black uppercase tracking-tighter mb-8 text-left leading-[0.85]">
+									Dream<br /><span className="text-black bg-white px-2">Team</span>
+								</h2>
+
+								<div className="flex-1 overflow-y-auto w-full no-scrollbar space-y-4 pb-12">
+									{groupTeams.length > 0 ? (
+										groupTeams.map((team: any) => (
+											<div key={team.id} className="bg-black/20 p-4 rounded-xl border-l-4 border-white backdrop-blur-sm hover:bg-black/30 transition-colors">
+												<div className="font-bold text-xl mb-1">
+													{team.project_id /* Ideally retrieve project name from ID or included data */}
+													{/* If 'project' object not populated, try to check if 'name' exists on team or project relation */}
+													{team.name || `Team #${team.id}`}
+												</div>
+												<div className="flex -space-x-2 overflow-hidden mt-3">
+													{team.users?.map((u: any) => (
+														<div key={u.id} className="inline-block h-8 w-8 rounded-full ring-2 ring-[#E74C3C] bg-gray-800 flex items-center justify-center text-xs font-bold" title={u.login}>
+															{u.login?.[0]?.toUpperCase()}
+														</div>
+													))}
+												</div>
+												<div className="items-center mt-2 text-xs font-mono opacity-70 flex gap-2">
+													<Users size={12} />
+													{team.users?.length || 0} Members
+												</div>
+											</div>
+										))
+									) : (
+										<div className="h-40 flex items-center justify-center bg-white/10 rounded-2xl border-2 border-dashed border-white/30">
+											<div className="text-center opacity-70">
+												<p className="font-bold">No group projects</p>
+												<p className="text-xs">in 2025</p>
+											</div>
+										</div>
+									)}
+								</div>
+
+								<div className="mt-4 pt-4 border-t border-white/20 text-center">
+									<div className="text-4xl font-black">{groupTeams.length}</div>
+									<div className="text-xs uppercase font-bold tracking-widest opacity-70">Co-op Missions</div>
+								</div>
+							</div>
+						</div>
+					)}
+
+					{/* Step 7: Bonus Projects (Over Achiever) - was previously Step 4 */}
+					{currentStep === 7 && (
 						<div className="w-full h-full bg-[#FFD700] text-black flex flex-col items-center p-8 animate-in slide-in-from-right duration-300 relative overflow-hidden">
 							{/* Trippy Geometric BG */}
 							<div className="absolute inset-0 z-0 opacity-20">
@@ -478,8 +692,10 @@ export function StoryMode({ user, achievements = [], onClose }: StoryModeProps) 
 						</div>
 					)}
 
-					{/* Slide 6: Identity Stats (The 42 DNA) */}
-					{currentStep === 5 && (
+
+
+					{/* Step 8: Identity Stats (The 42 DNA) - was previously Step 5 */}
+					{currentStep === 8 && (
 						<div className="w-full h-full bg-[#1db954] text-black flex flex-col items-center p-6 animate-in slide-in-from-right duration-300 relative overflow-hidden">
 							{/* Pattern BG */}
 							<div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, #000 1px, transparent 1px)', backgroundSize: '20px 20px' }} />

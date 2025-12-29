@@ -153,3 +153,60 @@ export const fetchUserAchievements = createServerFn()
 		});
 	});
 
+export const fetchLocations = createServerFn()
+	.handler(async (ctx: any) => {
+		const { token, userId } = ctx.data;
+		// Fetch last 4 months of locations.
+		const fourMonthsAgo = new Date();
+		fourMonthsAgo.setMonth(fourMonthsAgo.getMonth() - 4);
+		const dateString = fourMonthsAgo.toISOString();
+
+		// Fetch locations since 4 months ago. Max 100 might be small for 4 months if daily user, but it's a start.
+		const url = `https://api.intra.42.fr/v2/users/${userId}/locations?range[begin_at]=${dateString},2100-01-01T00:00:00.000Z&page[size]=100`;
+
+		const response = await fetch(url, {
+			headers: { Authorization: `Bearer ${token}` },
+		});
+
+		if (!response.ok) {
+			console.error("Failed to fetch locations", response.status);
+			return [];
+		}
+		return await response.json();
+	});
+
+export const fetchScaleTeams = createServerFn()
+	.handler(async (ctx: any) => {
+		const { token, userId } = ctx.data;
+		// Fetch evaluations (as corrected to get feedback received)
+		const url = `https://api.intra.42.fr/v2/users/${userId}/scale_teams/as_corrected?page[size]=100`;
+
+		const response = await fetch(url, {
+			headers: { Authorization: `Bearer ${token}` },
+		});
+
+		if (!response.ok) {
+			console.error("Failed to fetch scale teams", response.status);
+			return [];
+		}
+		return await response.json();
+	});
+
+export const fetchTeams = createServerFn()
+	.handler(async (ctx: any) => {
+		const { token, userId } = ctx.data;
+		// Fetch teams for group projects
+		const url = `https://api.intra.42.fr/v2/users/${userId}/teams?page[size]=100`;
+
+		const response = await fetch(url, {
+			headers: { Authorization: `Bearer ${token}` },
+		});
+
+		if (!response.ok) {
+			console.error("Failed to fetch teams", response.status);
+			return [];
+		}
+		return await response.json();
+	});
+
+

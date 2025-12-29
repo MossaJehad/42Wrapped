@@ -1,6 +1,6 @@
 import { createFileRoute, useSearch, useNavigate } from '@tanstack/react-router';
 import { useState, useEffect, useRef } from 'react';
-import { exchangeCodeForToken, fetchMe, fetchUserAchievements } from '../server/auth';
+import { exchangeCodeForToken, fetchMe, fetchUserAchievements, fetchLocations, fetchScaleTeams, fetchTeams } from '../server/auth';
 import { clientConfig } from '../lib/client-config';
 import { StoryMode } from '../components/StoryMode';
 
@@ -25,6 +25,9 @@ function App() {
 
 	const [user, setUser] = useState<any>(null);
 	const [achievements, setAchievements] = useState<any[]>([]);
+	const [locations, setLocations] = useState<any[]>([]);
+	const [evaluations, setEvaluations] = useState<any[]>([]);
+	const [teams, setTeams] = useState<any[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -64,6 +67,48 @@ function App() {
 						// Don't block login if achievements fail
 					}
 
+					// Fetch locations
+					try {
+						const locs = await fetchLocations({
+							data: {
+								token: tokenData.access_token,
+								userId: userData.id
+							}
+						} as any);
+						console.log("Locations:", locs);
+						setLocations(locs || []);
+					} catch (locError) {
+						console.error("Failed to fetch locations", locError);
+					}
+
+					// Fetch evaluations
+					try {
+						const evals = await fetchScaleTeams({
+							data: {
+								token: tokenData.access_token,
+								userId: userData.id
+							}
+						} as any);
+						console.log("Evaluations:", evals);
+						setEvaluations(evals || []);
+					} catch (evalError) {
+						console.error("Failed to fetch evaluations", evalError);
+					}
+
+					// Fetch teams
+					try {
+						const teamsData = await fetchTeams({
+							data: {
+								token: tokenData.access_token,
+								userId: userData.id
+							}
+						} as any);
+						console.log("Teams:", teamsData);
+						setTeams(teamsData || []);
+					} catch (teamError) {
+						console.error("Failed to fetch teams", teamError);
+					}
+
 					// Clear query params
 					navigate({ to: '/', search: () => ({ code: undefined }), replace: true });
 				} catch (err) {
@@ -88,7 +133,7 @@ function App() {
 
 	// If user is logged in, show the Story Mode
 	if (user) {
-		return <StoryMode user={user} achievements={achievements} />;
+		return <StoryMode user={user} achievements={achievements} locations={locations} evaluations={evaluations} teams={teams} />;
 	}
 
 	return (
