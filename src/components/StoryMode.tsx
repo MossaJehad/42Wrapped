@@ -190,97 +190,113 @@ export function StoryMode({ user, achievements = [], onClose }: StoryModeProps) 
 
 					{/* Slide 1: User Profile */}
 					{currentStep === 0 && (
-						<div className="w-full h-full bg-gradient-to-br from-purple-900 to-black flex flex-col items-center justify-center p-8 animate-in fade-in duration-300">
-							<div className="relative mb-8">
-								<div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-primary overflow-hidden shadow-[0_0_40px_-10px_var(--color-primary)]">
-									{user.image?.link ? (
-										<img src={user.image.link} alt={user.login} className="w-full h-full object-cover" />
-									) : (
-										<div className="w-full h-full bg-gray-700 flex items-center justify-center text-4xl font-bold">
-											{user.login?.[0]?.toUpperCase()}
-										</div>
-									)}
-								</div>
-								<div className="absolute -bottom-2 -right-2 bg-primary text-black font-black px-3 py-1 rounded-full text-sm">
-									#STUDENT
-								</div>
+						<div className="w-full h-full bg-[#7000FF] text-white flex flex-col items-center justify-center p-8 animate-in fade-in duration-300 relative overflow-hidden">
+							{/* Background Sunburst Effect */}
+							<div className="absolute inset-0 flex items-center justify-center z-0 opacity-20">
+								<div className="w-[800px] h-[800px] bg-[conic-gradient(from_0deg_at_50%_50%,_transparent_0deg,_#000_20deg,_transparent_40deg,_#000_60deg,_transparent_80deg,_#000_100deg,_transparent_120deg,_#000_140deg,_transparent_160deg,_#000_180deg,_transparent_200deg,_#000_220deg,_transparent_240deg,_#000_260deg,_transparent_280deg,_#000_300deg,_transparent_320deg,_#000_340deg,_transparent_360deg)] animate-[spin_20s_linear_infinite]" />
 							</div>
 
-							<h2 className="text-4xl font-black text-white text-center mb-2 tracking-tighter">
-								{user.displayname}
-							</h2>
-							<p className="text-xl text-white/70 text-center font-mono">
-								@{user.login}
-							</p>
+							<div className="relative z-10 flex flex-col items-center">
+								<div className="relative mb-8 group">
+									<div className="absolute -inset-2 bg-gradient-to-r from-yellow-400 to-pink-500 rounded-full animate-spin-slow opacity-75 blur-md" />
+									<div className="relative w-40 h-40 rounded-full border-4 border-black overflow-hidden bg-black shadow-2xl transform transition group-hover:scale-105">
+										{user.image?.link ? (
+											<img src={user.image.link} alt={user.login} className="w-full h-full object-cover" />
+										) : (
+											<div className="w-full h-full bg-gray-900 flex items-center justify-center text-5xl font-black">
+												{user.login?.[0]?.toUpperCase()}
+											</div>
+										)}
+									</div>
+									<div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-black text-white font-black px-4 py-1.5 rounded-full text-sm uppercase tracking-widest border-2 border-yellow-400 whitespace-nowrap z-20">
+										Main Character
+									</div>
+								</div>
 
-							<div className="mt-12 bg-white/10 backdrop-blur-md p-6 rounded-2xl border border-white/10 w-full">
-								<p className="text-center text-white/90 font-medium">
-									Ready to unwrap your 2025?
-								</p>
+								<div className="space-y-2 text-center">
+									<h2 className="text-5xl md:text-6xl font-black text-white leading-[0.85] tracking-tighter drop-shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+										{user.displayname?.split(' ').map((n: string, i: number) => (
+											<span key={i} className="block">{n}</span>
+										)) || user.login}
+									</h2>
+									<p className="text-xl font-bold font-mono bg-black/20 inline-block px-3 py-1 rounded">
+										@{user.login}
+									</p>
+								</div>
+
+								<div className="mt-12 bg-white text-black p-6 rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,0.3)] w-full rotate-2 transform transition hover:rotate-0 hover:scale-105">
+									<p className="text-center font-black text-lg uppercase leading-tight">
+										Your 2025 Wrapped is served.
+									</p>
+								</div>
 							</div>
 						</div>
 					)}
 
 					{/* Slide 2: Achievements - "Top List" Style */}
 					{currentStep === 1 && (
-						<div className="w-full h-full bg-[#121212] text-white flex flex-col relative overflow-hidden p-6 font-sans">
-							{/* Decorative Top-Left Corners */}
-							<div className="absolute -top-10 -left-10 z-0">
-								<div className="w-40 h-40 rounded-full border-[20px] border-[#9b5de5] absolute top-0 left-0" />
-								<div className="w-56 h-56 rounded-full border-[20px] border-[#f15bb5] absolute top-[-30px] left-[-30px]" />
-								<div className="w-72 h-72 rounded-full border-[20px] border-[#fee440] absolute top-[-60px] left-[-60px]" />
-							</div>
+						<div className="w-full h-full bg-[#FF4500] text-white flex flex-col relative overflow-hidden p-6 font-sans animate-in slide-in-from-right duration-300">
+							{/* Zig Zag Pattern */}
+							<div className="absolute inset-0 z-0 opacity-10"
+								style={{
+									backgroundImage: 'linear-gradient(135deg, #000 25%, transparent 25%), linear-gradient(225deg, #000 25%, transparent 25%), linear-gradient(45deg, #000 25%, transparent 25%), linear-gradient(315deg, #000 25%, transparent 25%)',
+									backgroundPosition: '10px 0, 10px 0, 0 0, 0 0',
+									backgroundSize: '20px 20px',
+									backgroundRepeat: 'repeat'
+								}}
+							/>
 
-							{/* Decorative Bottom-Right Corners */}
-							<div className="absolute -bottom-20 -right-20 z-0 opacity-80">
-								<div className="w-64 h-64 rounded-full border-[30px] border-[#00bbf9] absolute bottom-0 right-0" />
-								<div className="w-80 h-80 rounded-full border-[30px] border-[#9b5de5] absolute bottom-[-40px] right-[-40px]" />
-							</div>
-
-							{/* Scribble Line (SVG) */}
-							<svg className="absolute top-32 right-0 w-48 h-48 z-0 opacity-60" viewBox="0 0 100 100" fill="none" stroke="white" strokeWidth="2">
-								<path d="M10,50 Q30,10 50,50 T90,50" />
+							{/* Large background decorative Achievement Icon */}
+							<svg className="absolute -right-20 top-20 w-96 h-96 opacity-10 rotate-12" viewBox="0 0 24 24" fill="currentColor">
+								<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
 							</svg>
 
 							<div className="relative z-10 w-full h-full flex flex-col">
 								{/* Title */}
-								<div className="self-center mt-20 md:mt-10 mb-8 md:mb-12">
-									<div className="bg-white text-black font-black text-2xl px-4 py-2 uppercase tracking-tighter inline-block rotate-[-3deg] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)]">
-										Your &nbsp; Latest <br /> Achievements
-									</div>
+								<div className="mt-12 mb-8">
+									<h2 className="text-6xl font-black tracking-tighter uppercase leading-[0.8] mb-4">
+										Level<br />
+										<span className="text-black inline-block transform -skew-x-12 bg-white px-2">UP!</span>
+									</h2>
 								</div>
 
 								{/* The List 1-5 */}
-								<div className="flex flex-col gap-5 w-full max-w-xs mx-auto">
+								<div className="flex flex-col gap-3 w-full flex-1 overflow-y-auto no-scrollbar">
 									{displayAchievements.map((ach: any, idx: number) => (
 										<div key={ach.id} className="flex items-center gap-4 group">
 											{/* Number */}
-											<span className="font-black text-4xl w-8 text-right text-white tabular-nums tracking-tighter shrink-0 drop-shadow-lg">
+											<div className="w-10 h-10 flex-shrink-0 bg-black text-[#FF4500] font-black text-2xl flex items-center justify-center rounded-lg shadow-lg border-2 border-white transform group-hover:rotate-12 transition-transform">
 												{idx + 1}
-											</span>
+											</div>
 
 											{/* Name Box */}
-											<div className="bg-white text-black font-black text-sm md:text-base px-3 py-2 uppercase tracking-tight w-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transform transition group-hover:scale-105 group-hover:-rotate-1 truncate">
-												{ach.name}
+											<div className="flex-1 bg-white/90 backdrop-blur-sm text-black font-bold text-sm md:text-base px-4 py-3 rounded-xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transform transition hover:translate-x-1 hover:-translate-y-1">
+												<span className="line-clamp-2 leading-tight">
+													{ach.name}
+												</span>
 											</div>
 										</div>
 									))}
 
 									{displayAchievements.length === 0 && (
-										<div className="text-center opacity-60 mt-10 font-bold tracking-widest uppercase">
-											No 2025 Unlocks
+										<div className="flex-1 flex items-center justify-center">
+											<div className="bg-black/20 p-6 rounded-2xl text-center border-2 border-dashed border-white/50">
+												<p className="font-bold text-xl uppercase">No unlocks yet</p>
+											</div>
 										</div>
 									)}
 								</div>
 
 								{/* Count Summary */}
-								<div className="mt-auto mb-12 self-end text-right">
-									<p className="text-[#00bbf9] font-black text-6xl tracking-tighter leading-none drop-shadow-md">
-										{achievementsFiltered.length}
-									</p>
-									<p className="text-white font-bold text-sm uppercase tracking-widest bg-black/50 px-2 inline-block">
-										Total in 2025
-									</p>
+								<div className="mt-6 pt-6 border-t-4 border-black/10">
+									<div className="flex justify-between items-end">
+										<div className="font-black text-sm uppercase max-w-[100px] leading-tight opacity-80">
+											Total Unlocked in 2025
+										</div>
+										<div className="text-8xl font-black leading-none tracking-tighter drop-shadow-lg">
+											{achievementsFiltered.length}
+										</div>
+									</div>
 								</div>
 							</div>
 						</div>
@@ -288,78 +304,103 @@ export function StoryMode({ user, achievements = [], onClose }: StoryModeProps) 
 
 					{/* Slide 3: Projects 2025 Card */}
 					{currentStep === 2 && (
-						<div className="w-full h-full bg-[#8e44ad] text-white flex flex-col items-center p-8 animate-in slide-in-from-right duration-300 relative overflow-hidden">
-							{/* Decoration */}
-							<div className="absolute -top-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl animate-pulse" />
-							<div className="absolute bottom-10 -left-10 w-48 h-48 bg-black/20 rounded-full blur-3xl" />
+						<div className="w-full h-full bg-[#00E5FF] text-black flex flex-col items-center p-6 animate-in slide-in-from-right duration-300 relative overflow-hidden">
+							{/* Background Grid */}
+							<div className="absolute inset-0 z-0 opacity-20"
+								style={{
+									backgroundImage: 'linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)',
+									backgroundSize: '40px 40px'
+								}}
+							/>
 
-							<div className="relative z-10 w-full flex-1 flex flex-col justify-center">
-								<h2 className="text-5xl font-black tracking-tighter mb-8 text-center rotate-1">
-									CODING
+							{/* Floating Elements */}
+							<div className="absolute top-10 right-10 text-6xl font-mono font-black opacity-10 rotate-12">{`</>`}</div>
+							<div className="absolute bottom-20 left-10 text-8xl font-mono font-black opacity-10 -rotate-12">{`{ }`}</div>
+
+							<div className="relative z-10 w-full h-full flex flex-col">
+								<h2 className="text-6xl font-black tracking-tighter mb-8 text-left mt-10">
+									CODE
 									<br />
-									MARATHON
+									<span className="text-white bg-black px-2 py-0">MODE</span>
 								</h2>
 
-								<div className="grid grid-cols-2 gap-4 mb-8">
-									<div className="bg-white/10 p-4 rounded-2xl backdrop-blur-md border border-white/10 text-center">
-										<div className="text-4xl font-black mb-1">{totalProjects}</div>
-										<div className="text-[10px] uppercase font-bold tracking-widest opacity-70">
-											Projects Done
+								<div className="grid grid-cols-2 gap-4 mb-6">
+									<div className="bg-[#2d3436] text-[#00E5FF] p-4 rounded-tl-3xl rounded-br-3xl rounded-tr-lg rounded-bl-lg border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between aspect-[4/3]">
+										<div className="text-5xl font-black">{totalProjects}</div>
+										<div className="text-xs uppercase font-bold tracking-widest text-white">
+											Projects
 										</div>
 									</div>
-									<div className="bg-white/10 p-4 rounded-2xl backdrop-blur-md border border-white/10 text-center">
-										<div className="text-4xl font-black mb-1">{averageMark}%</div>
-										<div className="text-[10px] uppercase font-bold tracking-widest opacity-70">
+									<div className="bg-white text-black p-4 rounded-tr-3xl rounded-bl-3xl rounded-tl-lg rounded-br-lg border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between aspect-[4/3]">
+										<div className="text-5xl font-black">{averageMark}%</div>
+										<div className="text-xs uppercase font-bold tracking-widest opacity-60">
 											Avg Score
 										</div>
 									</div>
 								</div>
 
-								<div className="space-y-3 w-full">
-									<p className="text-center font-bold text-sm uppercase tracking-widest opacity-70 mb-2">
-										Top Projects
-									</p>
-									{topProjects.slice(0, 3).map((p: any) => (
-										<div key={p.id} className="flex items-center justify-between bg-black/20 p-3 rounded-lg border border-white/5">
-											<span className="font-bold text-sm truncate max-w-[150px]">{p.project.name}</span>
-											<span className={`font-black ${p.final_mark >= 100 ? 'text-[#1DB954]' : 'text-white'}`}>
-												{p.final_mark}
-											</span>
-										</div>
-									))}
-								</div>
-
-								{topProjects.length === 0 && (
-									<div className="text-center opacity-70 font-medium">
-										No projects finished in {currentYear}.
+								<div className="flex-1 bg-black text-white p-6 rounded-3xl border-4 border-white/20 overflow-hidden relative">
+									<div className="absolute top-0 right-0 p-4 opacity-20 font-mono text-xs">
+										top_projects.json
 									</div>
-								)}
+									<p className="font-bold text-sm uppercase tracking-widest text-[#00E5FF] mb-4">
+										Top Highlights
+									</p>
+									<div className="space-y-4">
+										{topProjects.slice(0, 3).map((p: any) => (
+											<div key={p.id} className="flex items-center justify-between border-b border-white/10 pb-2 last:border-0">
+												<span className="font-bold text-lg truncate w-2/3">{p.project.name}</span>
+												<span className={`font-black text-xl ${p.final_mark >= 100 ? 'text-[#00E5FF]' : 'text-white'}`}>
+													{p.final_mark}
+												</span>
+											</div>
+										))}
+									</div>
+
+									{topProjects.length === 0 && (
+										<div className="h-full flex items-center justify-center opacity-50 font-mono">
+											// No data found
+										</div>
+									)}
+								</div>
 							</div>
 						</div>
 					)}
 
 					{/* Slide 4: Skills Card */}
 					{currentStep === 3 && (
-						<div className="w-full h-full bg-[#FF4785] text-white flex flex-col items-center p-8 animate-in slide-in-from-right duration-300 relative overflow-hidden">
+						<div className="w-full h-full bg-[#E056FD] text-white flex flex-col items-center p-8 animate-in slide-in-from-right duration-300 relative overflow-hidden">
+							{/* Pattern BG: Polka Dots */}
+							<div className="absolute inset-0 opacity-20"
+								style={{
+									backgroundImage: 'radial-gradient(circle, #000 2px, transparent 2.5px)',
+									backgroundSize: '24px 24px'
+								}}
+							/>
+
+							{/* Gradient Blobs */}
+							<div className="absolute top-0 right-0 w-64 h-64 bg-yellow-300 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-pulse" />
+							<div className="absolute bottom-0 left-0 w-64 h-64 bg-cyan-300 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-pulse delay-700" />
+
 							<div className="relative z-10 w-full flex-1 flex flex-col justify-center">
-								<h2 className="text-5xl font-black tracking-tighter mb-8 text-center -rotate-1">
-									TOP
+								<h2 className="text-5xl font-black tracking-tighter mb-10 text-right">
+									SKILL
 									<br />
-									SKILLS
+									<span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-white text-6xl drop-shadow-sm">STACK</span>
 								</h2>
 
-								<div className="w-full space-y-4">
+								<div className="w-full space-y-6">
 									{topSkills.map((skill: any, index: number) => (
-										<div key={skill.id} className="w-full">
-											<div className="flex justify-between mb-1 text-sm font-bold uppercase tracking-wider">
-												<span>{skill.name}</span>
-												<span className="opacity-80">{skill.level.toFixed(2)}</span>
+										<div key={skill.id} className="w-full relative group">
+											<div className="flex justify-between mb-2 text-lg font-black uppercase tracking-tight z-10 relative">
+												<span className="bg-black/20 px-2 rounded backdrop-blur-sm">{skill.name}</span>
+												<span className="text-yellow-300 drop-shadow-md">{skill.level.toFixed(2)}</span>
 											</div>
-											<div className="h-3 w-full bg-black/20 rounded-full overflow-hidden">
+											<div className="h-6 w-full bg-black/30 rounded-full overflow-hidden border-2 border-black/20 backdrop-blur-sm">
 												<div
-													className="h-full bg-white rounded-full"
+													className="h-full bg-gradient-to-r from-yellow-300 via-white to-yellow-300 rounded-full"
 													style={{
-														width: `${Math.min((skill.level / 21) * 100, 100)}%`, // Assuming 21 is max level for visual scale roughly
+														width: `${Math.min((skill.level / 21) * 100, 100)}%`,
 														transitionDelay: `${index * 100}ms`
 													}}
 												/>
@@ -369,8 +410,8 @@ export function StoryMode({ user, achievements = [], onClose }: StoryModeProps) 
 								</div>
 
 								{topSkills.length === 0 && (
-									<div className="text-center opacity-70 font-medium">
-										No skill data available yet.
+									<div className="bg-white/10 p-6 rounded-2xl text-center border-2 border-white/20 backdrop-blur-md">
+										<p className="font-bold">Loading skills...</p>
 									</div>
 								)}
 							</div>
