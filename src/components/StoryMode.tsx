@@ -279,7 +279,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 						<div key={idx} className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
 							<div
 								className={cn(
-									"h-full bg-white transition-all duration-300 ease-linear",
+									"h-full bg-white transition-all duration-500 ease-linear",
 									idx < currentStep ? "w-full" :
 										idx === currentStep ? "animate-story-progress w-full" : "w-0"
 								)}
@@ -304,7 +304,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 						e.stopPropagation();
 						setIsPaused(!isPaused);
 					}}
-					className="absolute border border-white/8 bottom-6 right-6 z-50 p-3 bg-white/10 cursor-pointer hover:bg-white/20 backdrop-blur-md rounded-2xl text-white transition-all duration-300 ring-1 ring-white/10 group shadow-lg"
+					className="absolute border border-white/8 bottom-6 right-6 z-50 p-3 bg-white/10 cursor-pointer hover:bg-white/20 backdrop-blur-md rounded-2xl text-white transition-all duration-500 ring-1 ring-white/10 group shadow-lg"
 					title={isPaused ? "Play" : "Pause"}
 				>
 					{isPaused ? (
@@ -323,7 +323,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 					{/* Slide 1: User Profile */}
 					{currentStep === 0 && (
-						<div className="w-full h-full bg-[#7000FF] text-white flex flex-col items-center justify-center p-8 animate-in fade-in duration-300 relative overflow-hidden">
+						<div className="w-full h-full bg-[#7000FF] text-white flex flex-col items-center justify-center p-8 animate-in fade-in duration-500 relative overflow-hidden">
 							{/* Background Sunburst Effect */}
 							<div className="absolute inset-0 flex items-center justify-center z-0 opacity-20">
 								<div className="min-w-[1200px] min-h-[1200px] bg-[conic-gradient(from_0deg_at_50%_50%,_transparent_0deg,_#000_20deg,_transparent_40deg,_#000_60deg,_transparent_80deg,_#000_100deg,_transparent_120deg,_#000_140deg,_transparent_160deg,_#000_180deg,_transparent_200deg,_#000_220deg,_transparent_240deg,_#000_260deg,_transparent_280deg,_#000_300deg,_transparent_320deg,_#000_340deg,_transparent_360deg)] animate-[spin_20s_linear_infinite]" />
@@ -347,12 +347,12 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 								</div>
 
 								<div className="space-y-2 text-center">
-									<h2 className="text-5xl md:text-6xl font-black text-white leading-[0.85] tracking-tighter drop-shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+									<h2 className="text-5xl md:text-6xl font-black text-white leading-[0.85] tracking-tighter drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] animate-in slide-in-from-bottom-8 fade-in duration-1000 delay-300 fill-mode-forwards">
 										{user.displayname?.split(' ').map((n: string, i: number) => (
 											<span key={i} className="block">{n}</span>
 										)) || user.login}
 									</h2>
-									<p className="text-xl font-bold font-mono bg-black/20 inline-block px-3 py-1 rounded">
+									<p className="text-xl font-bold font-mono bg-black/20 inline-block px-3 py-1 rounded animate-in slide-in-from-bottom-8 fade-in duration-1000 delay-500 fill-mode-forwards">
 										@{user.login}
 									</p>
 								</div>
@@ -366,9 +366,9 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 						</div>
 					)}
 
-					{/* Slide 2: Achievements - "Top List" Style */}
-					{currentStep === 1 && (
-						<div className="w-full h-full bg-[#FF4500] text-white flex flex-col relative overflow-hidden p-6 font-sans animate-in slide-in-from-right duration-300">
+					{/* Slide 2: Achievements - "Top List" Style -> Now Step 6 */}
+					{currentStep === 6 && (
+						<div className="w-full h-full bg-[#FF4500] text-white flex flex-col relative overflow-hidden p-6 font-sans animate-in slide-in-from-right duration-500">
 							{/* Zig Zag Pattern */}
 							<div className="absolute inset-0 z-0 opacity-10"
 								style={{
@@ -386,7 +386,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 							<div className="relative z-10 w-full h-full flex flex-col">
 								{/* Title */}
-								<div className="mt-12 mb-8">
+								<div className="mt-12 mb-8 animate-in slide-in-from-bottom-10 fade-in duration-1000 delay-100 fill-mode-forwards">
 									<h2 className="text-6xl font-black tracking-tighter uppercase leading-[0.8] mb-4">
 										Level<br />
 										<span className="text-black inline-block transform -skew-x-12 bg-white px-2">UP!</span>
@@ -398,7 +398,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 									{displayAchievements.map((ach: any, idx: number) => (
 										<div key={ach.id} className="flex items-center gap-4 group">
 											{/* Number */}
-											<div className="w-10 h-10 flex-shrink-0 bg-black text-[#FF4500] font-black text-2xl flex items-center justify-center rounded-lg shadow-lg border-2 border-white transform group-hover:rotate-12 transition-transform">
+											<div className="w-10 h-10 flex-shrink-0 bg-black text-[#FF4500] font-black text-2xl flex items-center justify-center rounded-lg shadow-lg border-2 border-white transform group-hover:rotate-12 transition-transform animate-in zoom-in spin-in-12 duration-500 delay-300">
 												{idx + 1}
 											</div>
 
@@ -423,10 +423,10 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 								{/* Count Summary */}
 								<div className="mt-6 pt-6 border-t-4 border-black/10">
 									<div className="flex justify-between items-end">
-										<div className="font-black text-sm uppercase max-w-[100px] leading-tight opacity-80">
+										<div className="font-black text-sm uppercase max-w-[100px] leading-tight opacity-80 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-500">
 											Total Unlocked in 2025
 										</div>
-										<div className="text-8xl font-black leading-none tracking-tighter drop-shadow-lg">
+										<div className="text-8xl font-black leading-none tracking-tighter drop-shadow-lg animate-in zoom-in fade-in duration-700 delay-700">
 											{achievementsFiltered.length}
 										</div>
 									</div>
@@ -435,9 +435,9 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 						</div>
 					)}
 
-					{/* Slide 3: Projects 2025 Card */}
-					{currentStep === 2 && (
-						<div className="w-full h-full bg-[#00E5FF] text-black flex flex-col items-center p-6 animate-in slide-in-from-right duration-300 relative overflow-hidden">
+					{/* Slide 3: Projects 2025 Card -> Now Step 1 */}
+					{currentStep === 1 && (
+						<div className="w-full h-full bg-[#00E5FF] text-black flex flex-col items-center p-6 animate-in slide-in-from-right duration-500 relative overflow-hidden">
 							{/* Background Grid */}
 							<div className="absolute inset-0 z-0 opacity-20"
 								style={{
@@ -451,20 +451,20 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 							<div className="absolute bottom-20 left-10 text-8xl font-mono font-black opacity-10 -rotate-12">{`{ }`}</div>
 
 							<div className="relative z-10 w-full h-full flex flex-col">
-								<h2 className="text-6xl font-black tracking-tighter mb-8 text-left mt-10">
+								<h2 className="text-6xl font-black tracking-tighter mb-8 text-left mt-10 animate-in slide-in-from-left fade-in duration-1000 delay-100">
 									CODE
 									<br />
 									<span className="text-white bg-black px-2 py-0">MODE</span>
 								</h2>
 
 								<div className="grid grid-cols-2 gap-4 mb-6">
-									<div className="bg-[#2d3436] text-[#00E5FF] p-4 rounded-tl-3xl rounded-br-3xl rounded-tr-lg rounded-bl-lg border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between aspect-[4/3]">
+									<div className="bg-[#2d3436] text-[#00E5FF] p-4 rounded-tl-3xl rounded-br-3xl rounded-tr-lg rounded-bl-lg border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between aspect-[4/3] animate-in zoom-in fade-in duration-700 delay-300">
 										<div className="text-5xl font-black">{totalProjects}</div>
 										<div className="text-xs uppercase font-bold tracking-widest text-white">
 											Projects
 										</div>
 									</div>
-									<div className="bg-white text-black p-4 rounded-tr-3xl rounded-bl-3xl rounded-tl-lg rounded-br-lg border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between aspect-[4/3]">
+									<div className="bg-white text-black p-4 rounded-tr-3xl rounded-bl-3xl rounded-tl-lg rounded-br-lg border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between aspect-[4/3] animate-in zoom-in fade-in duration-700 delay-500">
 										<div className="text-5xl font-black">{averageMark}%</div>
 										<div className="text-xs uppercase font-bold tracking-widest opacity-60">
 											Avg Score
@@ -500,9 +500,9 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 						</div>
 					)}
 
-					{/* Slide 4: Skills Card */}
+					{/* Slide 4: Skills Card -> Now Step 3 */}
 					{currentStep === 3 && (
-						<div className="w-full h-full bg-[#E056FD] text-white flex flex-col items-center p-8 animate-in slide-in-from-right duration-300 relative overflow-hidden">
+						<div className="w-full h-full bg-[#E056FD] text-white flex flex-col items-center p-8 animate-in slide-in-from-right duration-500 relative overflow-hidden">
 							{/* Pattern BG: Polka Dots */}
 							<div className="absolute inset-0 opacity-20"
 								style={{
@@ -516,7 +516,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 							<div className="absolute bottom-0 left-0 w-64 h-64 bg-cyan-300 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-pulse delay-700" />
 
 							<div className="relative z-10 w-full flex-1 flex flex-col justify-center">
-								<h2 className="text-5xl font-black tracking-tighter mb-10 text-right">
+								<h2 className="text-5xl font-black tracking-tighter mb-10 text-right animate-in slide-in-from-right fade-in duration-1000 delay-100">
 									SKILL
 									<br />
 									<span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-white text-6xl drop-shadow-sm">STACK</span>
@@ -524,7 +524,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 								<div className="w-full space-y-6">
 									{topSkills.map((skill: any, index: number) => (
-										<div key={skill.id} className="w-full relative group">
+										<div key={skill.id} className="w-full relative group animate-in slide-in-from-bottom-4 fade-in duration-700" style={{ animationDelay: `${300 + index * 100}ms` }}>
 											<div className="flex justify-between mb-2 text-lg font-black uppercase tracking-tight z-10 relative">
 												<span className="bg-black/20 px-2 rounded backdrop-blur-sm">{skill.name}</span>
 												<span className="text-yellow-300 drop-shadow-md">{skill.level.toFixed(2)}</span>
@@ -534,7 +534,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 													className="h-full bg-gradient-to-r from-yellow-300 via-white to-yellow-300 rounded-full"
 													style={{
 														width: `${Math.min((skill.level / 10) * 100, 100)}%`,
-														transitionDelay: `${index * 100}ms`
+														transitionDelay: `${800 + index * 100}ms`
 													}}
 												/>
 											</div>
@@ -553,21 +553,21 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 					{/* Step 4: Log Time Stats */}
 					{currentStep === 4 && (
-						<div className="w-full h-full bg-[#2C3E50] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-300 relative overflow-hidden">
+						<div className="w-full h-full bg-[#2C3E50] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-500 relative overflow-hidden">
 							<div className="absolute inset-0 opacity-10 pointer-events-none">
 								<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] border-[2px] border-white rounded-full animate-[spin_60s_linear_infinite]" />
 								<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] border-[2px] border-white rounded-full animate-[spin_40s_linear_infinite_reverse]" />
 							</div>
 
 							<div className="relative z-10 w-full h-full flex flex-col justify-center">
-								<div className="flex items-center gap-3 mb-8">
+								<div className="flex items-center gap-3 mb-8 animate-in slide-in-from-top-4 fade-in duration-700 delay-100">
 									<Clock size={40} className="text-[#3498DB]" />
 									<h2 className="text-4xl font-black uppercase tracking-tighter">
 										Time<br />Machine
 									</h2>
 								</div>
 
-								<p className="font-mono font-bold text-sm uppercase opacity-88 mb-8 border-b border-white/20 pb-2">
+								<p className="font-mono font-bold text-sm uppercase opacity-88 mb-8 border-b border-white/20 pb-2 animate-in fade-in duration-700 delay-300">
 									Last <span className="bg-white text-[#000] px-1.5 rounded mx-1 text-base font-black border-2 border-[#3498DB] shadow-[2px_2px_0px_#3498DB] transform -rotate-6 inline-block">4</span> Months Activity
 								</p>
 
@@ -590,7 +590,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 										</div>
 									</div>
 
-									<div className="bg-white/10 p-5 rounded-2xl border border-white/10 backdrop-blur-sm">
+									<div className="bg-white/10 p-5 rounded-2xl border border-white/10 backdrop-blur-sm animate-in slide-in-from-bottom-8 fade-in duration-700 delay-700">
 										<div className="text-3xl font-black text-[#FFD700]">
 											{formatDuration(totalLogMinutes)}
 										</div>
@@ -605,11 +605,11 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 					{/* Step 5: The Rhythm (Weekly Activity) */}
 					{currentStep === 5 && (
-						<div className="w-full h-full bg-[#8E44AD] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-300 relative overflow-hidden">
+						<div className="w-full h-full bg-[#8E44AD] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-500 relative overflow-hidden">
 							<div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
 
 							<div className="relative z-10 w-full h-full flex flex-col justify-center mt-10">
-								<div className="mb-4 flex flex-col items-center text-center">
+								<div className="mb-4 flex flex-col items-center text-center animate-in slide-in-from-top-4 fade-in duration-700 delay-100">
 									<h2 className="text-5xl font-black uppercase tracking-tighter leading-none mb-2">
 										The<br /><span className="text-[#F1C40F]">Rhythm</span>
 									</h2>
@@ -645,7 +645,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 											{/* Peak Day Display */}
 											<div className="flex-1 flex flex-col justify-center items-center text-center gap-6 w-full">
-												<div className="transform transition hover:scale-105 duration-300">
+												<div className="transform transition hover:scale-105 duration-500">
 													<div className="text-sm font-bold opacity-80 uppercase tracking-widest mb-2">
 														Most Productive day
 													</div>
@@ -692,22 +692,22 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 						</div>
 					)}
 
-					{/* Step 6: Group Projects */}
-					{currentStep === 6 && (
-						<div className="w-full h-full bg-[#E74C3C] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-300 relative overflow-hidden">
+					{/* Step 6: Group Projects -> Now Step 7 */}
+					{currentStep === 7 && (
+						<div className="w-full h-full bg-[#E74C3C] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-500 relative overflow-hidden">
 							<div className="absolute inset-0 opacity-20 pointer-events-none">
 								<Users size={400} className="absolute -bottom-20 -right-20 rotate-12 opacity-30" />
 							</div>
 
 							<div className="relative z-10 w-full h-full flex flex-col pt-12">
-								<h2 className="text-5xl font-black uppercase tracking-tighter mb-8 text-left leading-[0.85]">
+								<h2 className="text-5xl font-black uppercase tracking-tighter mb-8 text-left leading-[0.85] animate-in slide-in-from-left fade-in duration-700 delay-100">
 									Dream<br /><span className="text-black bg-white px-2">Team</span>
 								</h2>
 
 								<div className="flex-1 overflow-y-auto w-full no-scrollbar space-y-4 pb-12">
 									{groupTeams.length > 0 ? (
-										groupTeams.map((team: any) => (
-											<div key={team.id} className="bg-black/20 p-4 rounded-xl border-l-4 border-white backdrop-blur-sm hover:bg-black/30 transition-colors">
+										groupTeams.map((team: any, idx: number) => (
+											<div key={team.id} className="bg-black/20 p-4 rounded-xl border-l-4 border-white backdrop-blur-sm hover:bg-black/30 transition-colors animate-in slide-in-from-bottom-4 fade-in duration-500" style={{ animationDelay: `${300 + idx * 150}ms` }}>
 												<div className="font-bold text-xl mb-1">
 													{team.project_id /* Ideally retrieve project name from ID or included data */}
 													{/* If 'project' object not populated, try to check if 'name' exists on team or project relation */}
@@ -715,8 +715,16 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 												</div>
 												<div className="flex -space-x-2 overflow-hidden mt-3">
 													{team.users?.map((u: any) => (
-														<div key={u.id} className="inline-block h-8 w-8 rounded-full ring-2 ring-[#E74C3C] bg-gray-800 flex items-center justify-center text-xs font-bold" title={u.login}>
-															{u.login?.[0]?.toUpperCase()}
+														<div key={u.id} className="inline-block h-8 w-8 rounded-full ring-2 ring-[#E74C3C] bg-gray-800 flex items-center justify-center text-xs font-bold overflow-hidden" title={u.login}>
+															{u.image?.versions?.small || u.image?.link ? (
+																<img
+																	src={u.image.versions?.small || u.image.link}
+																	alt={u.login}
+																	className="w-full h-full object-cover"
+																/>
+															) : (
+																u.login?.[0]?.toUpperCase()
+															)}
 														</div>
 													))}
 												</div>
@@ -744,9 +752,9 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 						</div>
 					)}
 
-					{/* Step 7: Bonus Projects (Over Achiever) - was previously Step 4 */}
-					{currentStep === 7 && (
-						<div className="w-full h-full bg-[#FFD700] text-black flex flex-col items-center p-8 animate-in slide-in-from-right duration-300 relative overflow-hidden">
+					{/* Step 7: Bonus Projects (Over Achiever) - was previously Step 4 -> Now Step 2 */}
+					{currentStep === 2 && (
+						<div className="w-full h-full bg-[#FFD700] text-black flex flex-col items-center p-8 animate-in slide-in-from-right duration-500 relative overflow-hidden">
 							{/* Trippy Geometric BG */}
 							<div className="absolute inset-0 z-0 opacity-20">
 								{Array.from({ length: 12 }).map((_, i) => (
@@ -808,7 +816,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 					{/* Step 8: Identity Stats (The 42 DNA) - was previously Step 5 */}
 					{currentStep === 8 && (
-						<div className="w-full h-full bg-[#1db954] text-black flex flex-col items-center p-6 animate-in slide-in-from-right duration-300 relative overflow-hidden">
+						<div className="w-full h-full bg-[#1db954] text-black flex flex-col items-center p-6 animate-in slide-in-from-right duration-500 relative overflow-hidden">
 							{/* Pattern BG */}
 							<div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, #000 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
 

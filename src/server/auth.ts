@@ -206,7 +206,47 @@ export const fetchTeams = createServerFn()
 			console.error("Failed to fetch teams", response.status);
 			return [];
 		}
-		return await response.json();
+
+		const teams = await response.json();
+
+		// Enrich with user images (bulk fetch)
+		try {
+			const userIds = new Set<number>();
+			teams.forEach((t: any) => {
+				// Only gather IDs for relevant teams (e.g. 2025/2024) to save bandwidth,
+				// or just take the first X users found.
+				// Let's filter for teams updated recently (last 12 months)
+				// Or simply take all from the 100 teams fetched.
+				t.users?.forEach((u: any) => userIds.add(u.id));
+			});
+
+			if (userIds.size > 0 && userIds.size < 150) { // Limit to avoid URL overflow
+				const idList = Array.from(userIds).join(',');
+				const usersUrl = `https://api.intra.42.fr/v2/users?filter[id]=${idList}&page[size]=100`;
+				const usersRes = await fetch(usersUrl, {
+					headers: { Authorization: `Bearer ${token}` },
+				});
+
+				if (usersRes.ok) {
+					const usersData = await usersRes.json() as any[];
+					const userMap = new Map(usersData.map((u: any) => [u.id, u]));
+
+					// Map images back to teams
+					teams.forEach((t: any) => {
+						if (t.users) {
+							t.users = t.users.map((u: any) => {
+								const fullUser = userMap.get(u.id);
+								return fullUser ? { ...u, image: fullUser.image } : u;
+							});
+						}
+					});
+				}
+			}
+		} catch (err) {
+			console.error("Failed to enrich teams with images", err);
+		}
+
+		return teams;
 	});
 
 
