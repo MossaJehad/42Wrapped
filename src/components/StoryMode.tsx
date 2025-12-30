@@ -751,13 +751,13 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 							<AnimatePresence>
 								{!showQuote && (
 									<motion.div
-										className="relative my-20 z-10 w-full h-full flex flex-col"
+										className="relative my-6 sm:my-10 z-10 w-full h-full flex flex-col"
 										initial={{ opacity: 0, y: 20 }}
 										animate={{ opacity: 1, y: 0 }}
 										transition={{ duration: 0.6, ease: "easeOut" }}
 									>
 										<motion.h2
-											className="text-6xl font-black tracking-tighter mb-8 text-left mt-10"
+											className="text-6xl font-black tracking-tighter mb-8 text-left mt-4 sm:mt-10"
 											initial={{ opacity: 0, x: -30 }}
 											animate={{ opacity: 1, x: 0 }}
 											transition={{ duration: 0.5, delay: 0.1 }}
@@ -988,14 +988,14 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 					{/* Step 5: The Rhythm (Weekly Activity) */}
 					{currentStep === 5 && (
-						<div className="w-full h-full bg-[#8E44AD] text-white flex flex-col items-center p-6 relative overflow-hidden pointer-events-auto">
+						<div className="w-full h-full bg-[#8E44AD] text-white flex flex-col items-center p-4 sm:p-6 relative overflow-hidden pointer-events-auto">
 							{/* Background - Always visible */}
 							<div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
 
 							<AnimatePresence>
 								{!showQuote && (
 									<motion.div
-										className="relative my-20 z-10 w-full h-full flex flex-col justify-center"
+										className="relative my-6 sm:my-12 z-10 w-full h-full flex flex-col justify-center"
 										initial={{ opacity: 0, y: 30 }}
 										animate={{ opacity: 1, y: 0 }}
 										transition={{ duration: 0.6, ease: "easeOut" }}
@@ -1043,7 +1043,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 											</motion.div>
 
 											{/* Bar Chart */}
-											<div className="w-full h-40 flex items-end justify-between gap-2 px-4 pb-4 my-20">
+											<div className="w-full h-40 flex items-end justify-between gap-2 my-10">
 												{dayCounts.map((minutes, idx) => {
 													const heightPercent = Math.max((minutes / maxWeeklyMinutes) * 100, 10);
 													const isPeak = idx === peakDayIndex;
@@ -1082,7 +1082,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 					{/* Step 6: Group Projects -> Now Step 7 */}
 					{currentStep === 7 && (
-						<div className="w-full h-full bg-[#E74C3C] text-white flex flex-col items-center p-6 relative overflow-hidden pointer-events-auto">
+						<div className="w-full h-full bg-[#E74C3C] text-white flex flex-col items-center p-4 sm:p-6 relative overflow-hidden pointer-events-auto">
 							{/* Background - Always visible */}
 							<div className="absolute inset-0 opacity-20 pointer-events-none">
 								<Users size={400} className="absolute -bottom-20 -right-20 rotate-12 opacity-30" />
@@ -1091,7 +1091,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 							<AnimatePresence>
 								{!showQuote && (
 									<motion.div
-										className="relative my-20 z-10 w-full h-full flex flex-col"
+										className="relative my-6 sm:my-10 z-10 w-full h-full flex flex-col"
 										initial={{ opacity: 0, x: -30 }}
 										animate={{ opacity: 1, x: 0 }}
 										transition={{ duration: 0.6, ease: "easeOut" }}
