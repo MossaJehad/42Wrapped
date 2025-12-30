@@ -1,5 +1,6 @@
 import { createFileRoute, useSearch, useNavigate } from '@tanstack/react-router';
 import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { exchangeCodeForToken, fetchMe, fetchUserAchievements, fetchLocations, fetchScaleTeams, fetchTeams } from '../server/auth';
 import { clientConfig } from '../lib/client-config';
 import { StoryMode } from '../components/StoryMode';
@@ -30,6 +31,7 @@ function App() {
 	const [teams, setTeams] = useState<any[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
 
 	const processedCode = useRef<string | null>(null);
 
@@ -126,6 +128,15 @@ function App() {
 		handleLogin();
 	}, [code, navigate, user]);
 
+	// Cycle loading messages
+	useEffect(() => {
+		if (!loading) return;
+		const interval = setInterval(() => {
+			setLoadingMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
+		}, 1800);
+		return () => clearInterval(interval);
+	}, [loading]);
+
 	const handleLoginParams = new URLSearchParams({
 		client_id: clientConfig.clientId,
 		redirect_uri: clientConfig.redirectUri,
@@ -181,9 +192,17 @@ function App() {
 
 				<div className="mt-8 w-full">
 					{loading ? (
-						<div className="flex flex-col items-center gap-4">
-							<div className="w-12 h-12 border-8 border-primary border-t-transparent rounded-full animate-spin" />
-							<p className="text-primary font-bold animate-pulse text-xl">LOADING...</p>
+						<div className="flex flex-col items-center gap-6 h-32 justify-center">
+							<div className="relative">
+								<div className="w-16 h-16 border-8 border-primary/20 border-t-primary rounded-full animate-spin" />
+								<div className="absolute inset-0 flex items-center justify-center font-mono text-xs font-bold opacity-50">42</div>
+							</div>
+
+							<div className="h-8 relative w-full max-w-[300px] flex justify-center overflow-hidden">
+								<AnimatePresence mode='wait'>
+									<LoadingText key={loadingMessageIndex} message={LOADING_MESSAGES[loadingMessageIndex]} />
+								</AnimatePresence>
+							</div>
 						</div>
 					) : (
 						<a
@@ -208,5 +227,32 @@ function App() {
 				Made for <img src="https://www.42network.org/wp-content/uploads/2024/04/42.svg" alt="42" className="inline-block w-6" /> Students
 			</footer>
 		</div>
+	);
+}
+
+const LOADING_MESSAGES = [
+	"Connecting to Intra 42...",
+	"Downloading coffee logs...",
+	"Analyzing segmentation faults...",
+	"Calculating sleep debt...",
+	"Counting norminette errors...",
+	"Fetching project history...",
+	"Compiling year data...",
+	"Reviewing peer reviews...",
+	"Searching for leaks...",
+	"Reticulating splines...",
+];
+
+function LoadingText({ message }: { message: string }) {
+	return (
+		<motion.p
+			initial={{ opacity: 0, y: 10 }}
+			animate={{ opacity: 1, y: 0 }}
+			exit={{ opacity: 0, y: -10 }}
+			transition={{ duration: 0.3 }}
+			className="text-primary font-bold text-lg uppercase tracking-wider whitespace-nowrap absolute"
+		>
+			{message}
+		</motion.p>
 	);
 }

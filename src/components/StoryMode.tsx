@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { cn } from '../lib/utils';
 import { ChevronLeft, ChevronRight, Clock, Users } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MusicPlayerWidget } from './MusicPlayerWidget';
 
 interface StoryModeProps {
@@ -16,6 +17,22 @@ interface StoryModeProps {
 export function StoryMode({ user, achievements = [], locations = [], teams = [], evaluations = [], onClose }: StoryModeProps) {
 	const [currentStep, setCurrentStep] = useState(0);
 	const [isPaused, setIsPaused] = useState(false);
+	const [showQuote, setShowQuote] = useState(false);
+
+	// Quotes Map
+	const QUOTES: Record<number, string> = {
+		1: "Talk is cheap. Show me the code.",
+		2: "There is no traffic jam along the extra mile.",
+		3: "Skill is only developed by hours and hours of work.",
+		4: "Time is what we want most, but what we use worst.",
+		5: "Consistency is the DNA of mastery.",
+		6: "Greatness is a lot of small things done well.",
+		7: "Alone we can do so little; together we can do so much.",
+		8: "Patience is effective. Speed is impressive.",
+		9: "Quality is not an act, it is a habit.",
+		10: "Feedback is the breakfast of champions.",
+		11: "You are what you do, not what you say you'll do.",
+	};
 
 	// --- Data Processing for 2025 ---
 	const currentYear = 2025;
@@ -131,6 +148,26 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 		dailyMinutes.push(dayMinutes);
 		totalLogMinutes += dayMinutes;
 	});
+
+	// --- Weekly Activity Calculation ---
+	const daysOfWeekLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+	const dayCounts = [0, 0, 0, 0, 0, 0, 0];
+
+	dayIntervals.forEach((intervals, dateKey) => {
+		const date = new Date(dateKey);
+		const dayIndex = date.getDay();
+		let minutes = 0;
+		intervals.forEach(i => {
+			minutes += (i.end - i.start) / 1000 / 60;
+		});
+		dayCounts[dayIndex] += minutes;
+	});
+
+	const maxWeeklyMinutes = Math.max(...dayCounts, 1);
+	const peakDayIndex = dayCounts.indexOf(Math.max(...dayCounts));
+	const peakDayFull = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][peakDayIndex];
+	const peakDayShort = daysOfWeekLabels[peakDayIndex];
+
 
 	const maxLogMinutes = dailyMinutes.length > 0 ? Math.max(...dailyMinutes) : 0;
 	const avgLogMinutes = dailyMinutes.length > 0 ? Math.round(totalLogMinutes / dailyMinutes.length) : 0;
@@ -340,15 +377,34 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 	useEffect(() => {
 		if (isPaused) return;
 
+		// If a quote exists for this step and we haven't shown it yet (?)
+		// actually we handle the quote switch effect separately below.
+
+		// If showing quote, we don't advance step yet.
+		if (showQuote) return;
+
 		const timer = setTimeout(() => {
 			nextStep();
-		}, 5000);
+		}, 6000); // Increased slightly to give time to read data
 
 		return () => clearTimeout(timer);
-	}, [currentStep, isPaused, nextStep]);
+	}, [currentStep, isPaused, nextStep, showQuote]);
+
+	// Quote Timer Logic
+	useEffect(() => {
+		if (QUOTES[currentStep]) {
+			setShowQuote(true);
+			const timer = setTimeout(() => {
+				setShowQuote(false);
+			}, 3000); // 3 seconds for quote
+			return () => clearTimeout(timer);
+		} else {
+			setShowQuote(false);
+		}
+	}, [currentStep]);
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black animate-in fade-in zoom-in-95 duration-500">
+		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black animate-in fade-in zoom-in-95 duration-500 font-sans">
 			{/* Navigation Buttons (Desktop) */}
 			<button
 				onClick={prevStep}
@@ -367,7 +423,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 			</button>
 
 			{/* Mobile-first container */}
-			<div className="relative w-full h-full md:w-[400px] md:h-[800px] md:rounded-2xl overflow-hidden bg-background">
+			<div className="relative w-full h-full md:w-[400px] md:h-[800px] md:rounded-2xl overflow-hidden bg-background shadow-2xl">
 
 				{/* Progress Bars */}
 				<div className="absolute top-4 left-0 right-0 z-20 flex gap-1 px-2">
@@ -377,11 +433,11 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 								className={cn(
 									"h-full bg-white transition-all duration-500 ease-linear",
 									idx < currentStep ? "w-full" :
-										idx === currentStep ? "animate-story-progress w-full" : "w-0"
+										(idx === currentStep && !showQuote) ? "animate-story-progress w-full" : "w-0"
 								)}
 								style={{
-									animationDuration: '5s',
-									animationPlayState: idx === currentStep && !isPaused ? 'running' : 'paused'
+									animationDuration: '6s',
+									animationPlayState: (idx === currentStep && !isPaused && !showQuote) ? 'running' : 'paused'
 								}}
 							/>
 						</div>
@@ -414,8 +470,32 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 					)}
 				</button>
 
+				{/* Quote Overlay */}
+				<AnimatePresence>
+					{showQuote && (
+						<motion.div
+							key="quote-overlay"
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							exit={{ opacity: 0 }}
+							transition={{ duration: 0.5 }}
+							className="absolute inset-0 z-50 flex items-center justify-center p-8 text-center bg-black/60"
+						>
+							<motion.p
+								initial={{ opacity: 0, y: 40 }}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ duration: 1.2, ease: "easeOut" }}
+								className="text-3xl md:text-4xl font-black text-white leading-tight tracking-tight drop-shadow-2xl max-w-sm"
+							>
+								"{QUOTES[currentStep]}"
+							</motion.p>
+						</motion.div>
+					)}
+				</AnimatePresence>
+
 				{/* Story Content */}
 				<div className="w-full h-full relative">
+
 
 					{/* Slide 1: User Profile */}
 					{currentStep === 0 && (
@@ -464,8 +544,8 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 					{/* Slide 2: Achievements - "Top List" Style -> Now Step 6 */}
 					{currentStep === 6 && (
-						<div className="w-full h-full bg-[#FF4500] text-white flex flex-col relative overflow-hidden p-6 font-sans animate-in slide-in-from-right duration-500">
-							{/* Zig Zag Pattern */}
+						<div className="w-full h-full bg-[#FF4500] text-white flex flex-col relative overflow-hidden p-6 font-sans">
+							{/* Zig Zag Pattern - Always visible */}
 							<div className="absolute inset-0 z-0 opacity-10"
 								style={{
 									backgroundImage: 'linear-gradient(135deg, #000 25%, transparent 25%), linear-gradient(225deg, #000 25%, transparent 25%), linear-gradient(45deg, #000 25%, transparent 25%), linear-gradient(315deg, #000 25%, transparent 25%)',
@@ -475,66 +555,96 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 								}}
 							/>
 
-							{/* Large background decorative Achievement Icon */}
+							{/* Large background decorative Achievement Icon - Always visible */}
 							<svg className="absolute -right-20 top-20 w-96 h-96 opacity-10 rotate-12" viewBox="0 0 24 24" fill="currentColor">
 								<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
 							</svg>
 
-							<div className="relative z-10 w-full h-full flex flex-col">
-								{/* Title */}
-								<div className="mt-12 mb-8 animate-in slide-in-from-bottom-10 fade-in duration-1000 delay-100 fill-mode-forwards">
-									<h2 className="text-6xl font-black tracking-tighter uppercase leading-[0.8] mb-4">
-										Level<br />
-										<span className="text-black inline-block transform -skew-x-12 bg-white px-2">UP!</span>
-									</h2>
-								</div>
+							<AnimatePresence>
+								{!showQuote && (
+									<motion.div
+										className="relative z-10 w-full h-full flex flex-col"
+										initial={{ opacity: 0, x: -30 }}
+										animate={{ opacity: 1, x: 0 }}
+										transition={{ duration: 0.6, ease: "easeOut" }}
+									>
+										{/* Title */}
+										<motion.div
+											className="mt-12 mb-8"
+											initial={{ opacity: 0, y: -20 }}
+											animate={{ opacity: 1, y: 0 }}
+											transition={{ duration: 0.5, delay: 0.1 }}
+										>
+											<h2 className="text-6xl font-black tracking-tighter uppercase leading-[0.8] mb-4">
+												Level<br />
+												<span className="text-black inline-block transform -skew-x-12 bg-white px-2">UP!</span>
+											</h2>
+										</motion.div>
 
-								{/* The List 1-5 */}
-								<div className="flex flex-col gap-3 w-full flex-1 overflow-y-auto no-scrollbar">
-									{displayAchievements.map((ach: any, idx: number) => (
-										<div key={ach.id} className="flex items-center gap-4 group">
-											{/* Number */}
-											<div className="w-10 h-10 flex-shrink-0 bg-black text-[#FF4500] font-black text-2xl flex items-center justify-center rounded-lg shadow-lg border-2 border-white transform group-hover:rotate-12 transition-transform animate-in zoom-in spin-in-12 duration-500 delay-300">
-												{idx + 1}
+										{/* The List 1-5 */}
+										<div className="flex flex-col gap-3 w-full flex-1 overflow-y-auto no-scrollbar">
+											{displayAchievements.map((ach: any, idx: number) => (
+												<motion.div
+													key={ach.id}
+													className="flex items-center gap-4 group"
+													initial={{ opacity: 0, x: -20 }}
+													animate={{ opacity: 1, x: 0 }}
+													transition={{ duration: 0.4, delay: 0.2 + idx * 0.1 }}
+												>
+													{/* Number */}
+													<div className="w-10 h-10 flex-shrink-0 bg-black text-[#FF4500] font-black text-2xl flex items-center justify-center rounded-lg shadow-lg border-2 border-white transform group-hover:rotate-12 transition-transform">
+														{idx + 1}
+													</div>
+
+													{/* Name Box */}
+													<div className="flex-1 bg-white/90 backdrop-blur-sm text-black font-bold text-sm md:text-base px-4 py-3 rounded-xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transform transition hover:translate-x-1 hover:-translate-y-1">
+														<span className="line-clamp-2 leading-tight">
+															{ach.name}
+														</span>
+													</div>
+												</motion.div>
+											))}
+
+											{displayAchievements.length === 0 && (
+												<motion.div
+													className="flex-1 flex items-center justify-center"
+													initial={{ opacity: 0 }}
+													animate={{ opacity: 1 }}
+													transition={{ duration: 0.5, delay: 0.3 }}
+												>
+													<div className="bg-black/20 p-6 rounded-2xl text-center border-2 border-dashed border-white/50">
+														<p className="font-bold text-xl uppercase">No unlocks yet</p>
+													</div>
+												</motion.div>
+											)}
+										</div>
+
+										{/* Count Summary */}
+										<motion.div
+											className="mt-6 pt-6 border-t-4 border-black/10"
+											initial={{ opacity: 0, y: 20 }}
+											animate={{ opacity: 1, y: 0 }}
+											transition={{ duration: 0.5, delay: 0.8 }}
+										>
+											<div className="flex justify-between items-end">
+												<div className="font-black text-sm uppercase max-w-[100px] leading-tight opacity-80">
+													Total Unlocked in 2025
+												</div>
+												<div className="text-8xl font-black leading-none tracking-tighter drop-shadow-lg">
+													{achievementsFiltered.length}
+												</div>
 											</div>
-
-											{/* Name Box */}
-											<div className="flex-1 bg-white/90 backdrop-blur-sm text-black font-bold text-sm md:text-base px-4 py-3 rounded-xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transform transition hover:translate-x-1 hover:-translate-y-1">
-												<span className="line-clamp-2 leading-tight">
-													{ach.name}
-												</span>
-											</div>
-										</div>
-									))}
-
-									{displayAchievements.length === 0 && (
-										<div className="flex-1 flex items-center justify-center">
-											<div className="bg-black/20 p-6 rounded-2xl text-center border-2 border-dashed border-white/50">
-												<p className="font-bold text-xl uppercase">No unlocks yet</p>
-											</div>
-										</div>
-									)}
-								</div>
-
-								{/* Count Summary */}
-								<div className="mt-6 pt-6 border-t-4 border-black/10">
-									<div className="flex justify-between items-end">
-										<div className="font-black text-sm uppercase max-w-[100px] leading-tight opacity-80 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-500">
-											Total Unlocked in 2025
-										</div>
-										<div className="text-8xl font-black leading-none tracking-tighter drop-shadow-lg animate-in zoom-in fade-in duration-700 delay-700">
-											{achievementsFiltered.length}
-										</div>
-									</div>
-								</div>
-							</div>
+										</motion.div>
+									</motion.div>
+								)}
+							</AnimatePresence>
 						</div>
 					)}
 
 					{/* Slide 3: Projects 2025 Card -> Now Step 1 */}
 					{currentStep === 1 && (
-						<div className="w-full h-full bg-[#00E5FF] text-black flex flex-col items-center p-6 animate-in slide-in-from-right duration-500 relative overflow-hidden">
-							{/* Background Grid */}
+						<div className="w-full h-full bg-[#00E5FF] text-black flex flex-col items-center p-6 relative overflow-hidden">
+							{/* Background Grid - Always visible */}
 							<div className="absolute inset-0 z-0 opacity-20"
 								style={{
 									backgroundImage: 'linear-gradient(#000 1px, transparent 1px), linear-gradient(90deg, #000 1px, transparent 1px)',
@@ -542,64 +652,105 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 								}}
 							/>
 
-							{/* Floating Elements */}
+							{/* Floating Elements - Always visible */}
 							<div className="absolute top-10 right-10 text-6xl font-mono font-black opacity-10 rotate-12">{`</>`}</div>
 							<div className="absolute bottom-20 left-10 text-8xl font-mono font-black opacity-10 -rotate-12">{`{ }`}</div>
 
-							<div className="relative z-10 w-full h-full flex flex-col">
-								<h2 className="text-6xl font-black tracking-tighter mb-8 text-left mt-10 animate-in slide-in-from-left fade-in duration-1000 delay-100">
-									CODE
-									<br />
-									<span className="text-white bg-black px-2 py-0">MODE</span>
-								</h2>
+							{/* Content - Only shows after quote vanishes */}
+							<AnimatePresence>
+								{!showQuote && (
+									<motion.div
+										className="relative z-10 w-full h-full flex flex-col"
+										initial={{ opacity: 0, y: 20 }}
+										animate={{ opacity: 1, y: 0 }}
+										transition={{ duration: 0.6, ease: "easeOut" }}
+									>
+										<motion.h2
+											className="text-6xl font-black tracking-tighter mb-8 text-left mt-10"
+											initial={{ opacity: 0, x: -30 }}
+											animate={{ opacity: 1, x: 0 }}
+											transition={{ duration: 0.5, delay: 0.1 }}
+										>
+											CODE
+											<br />
+											<span className="text-white bg-black px-2 py-0">MODE</span>
+										</motion.h2>
 
-								<div className="grid grid-cols-2 gap-4 mb-6">
-									<div className="bg-[#2d3436] text-[#00E5FF] p-4 rounded-tl-3xl rounded-br-3xl rounded-tr-lg rounded-bl-lg border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between aspect-[4/3] animate-in zoom-in fade-in duration-700 delay-300">
-										<div className="text-5xl font-black">{totalProjects}</div>
-										<div className="text-xs uppercase font-bold tracking-widest text-white">
-											Projects
-										</div>
-									</div>
-									<div className="bg-white text-black p-4 rounded-tr-3xl rounded-bl-3xl rounded-tl-lg rounded-br-lg border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between aspect-[4/3] animate-in zoom-in fade-in duration-700 delay-500">
-										<div className="text-5xl font-black">{averageMark}%</div>
-										<div className="text-xs uppercase font-bold tracking-widest opacity-60">
-											Avg Score
-										</div>
-									</div>
-								</div>
+										<motion.div
+											className="grid grid-cols-2 gap-4 mb-6"
+											initial={{ opacity: 0 }}
+											animate={{ opacity: 1 }}
+											transition={{ duration: 0.4, delay: 0.2 }}
+										>
+											<motion.div
+												className="bg-[#2d3436] text-[#00E5FF] p-4 rounded-tl-3xl rounded-br-3xl rounded-tr-lg rounded-bl-lg border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between aspect-[4/3]"
+												initial={{ opacity: 0, scale: 0.8 }}
+												animate={{ opacity: 1, scale: 1 }}
+												transition={{ duration: 0.4, delay: 0.3 }}
+											>
+												<div className="text-5xl font-black">{totalProjects}</div>
+												<div className="text-xs uppercase font-bold tracking-widest text-white">
+													Projects
+												</div>
+											</motion.div>
+											<motion.div
+												className="bg-white text-black p-4 rounded-tr-3xl rounded-bl-3xl rounded-tl-lg rounded-br-lg border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] flex flex-col justify-between aspect-[4/3]"
+												initial={{ opacity: 0, scale: 0.8 }}
+												animate={{ opacity: 1, scale: 1 }}
+												transition={{ duration: 0.4, delay: 0.4 }}
+											>
+												<div className="text-5xl font-black">{averageMark}%</div>
+												<div className="text-xs uppercase font-bold tracking-widest opacity-60">
+													Avg Score
+												</div>
+											</motion.div>
+										</motion.div>
 
-								<div className="flex-1 bg-black text-white p-6 rounded-3xl border-4 border-white/20 overflow-hidden relative">
-									<div className="absolute top-0 right-0 p-4 opacity-20 font-mono text-xs">
-										top_projects.json
-									</div>
-									<p className="font-bold text-sm uppercase tracking-widest text-[#00E5FF] mb-4">
-										Top Highlights
-									</p>
-									<div className="space-y-4">
-										{topProjects.slice(0, 5).map((p: any) => (
-											<div key={p.id} className="flex items-center justify-between border-b border-white/10 pb-2 last:border-0">
-												<span className="font-bold text-lg truncate w-2/3">{p.project.name}</span>
-												<span className={`font-black text-xl ${p.final_mark >= 100 ? 'text-[#00E5FF]' : 'text-white'}`}>
-													{p.final_mark}
-												</span>
+										<motion.div
+											className="flex-1 bg-black text-white p-6 rounded-3xl border-4 border-white/20 overflow-hidden relative"
+											initial={{ opacity: 0, y: 30 }}
+											animate={{ opacity: 1, y: 0 }}
+											transition={{ duration: 0.5, delay: 0.5 }}
+										>
+											<div className="absolute top-0 right-0 p-4 opacity-20 font-mono text-xs">
+												top_projects.json
 											</div>
-										))}
-									</div>
+											<p className="font-bold text-sm uppercase tracking-widest text-[#00E5FF] mb-4">
+												Top Highlights
+											</p>
+											<div className="space-y-4">
+												{topProjects.slice(0, 5).map((p: any, idx: number) => (
+													<motion.div
+														key={p.id}
+														className="flex items-center justify-between border-b border-white/10 pb-2 last:border-0"
+														initial={{ opacity: 0, x: -20 }}
+														animate={{ opacity: 1, x: 0 }}
+														transition={{ duration: 0.3, delay: 0.6 + idx * 0.1 }}
+													>
+														<span className="font-bold text-lg truncate w-2/3">{p.project.name}</span>
+														<span className={`font-black text-xl ${p.final_mark >= 100 ? 'text-[#00E5FF]' : 'text-white'}`}>
+															{p.final_mark}
+														</span>
+													</motion.div>
+												))}
+											</div>
 
-									{topProjects.length === 0 && (
-										<div className="h-full flex items-center justify-center opacity-50 font-mono">
-											// No data found
-										</div>
-									)}
-								</div>
-							</div>
+											{topProjects.length === 0 && (
+												<div className="h-full flex items-center justify-center opacity-50 font-mono">
+													// No data found
+												</div>
+											)}
+										</motion.div>
+									</motion.div>
+								)}
+							</AnimatePresence>
 						</div>
 					)}
 
 					{/* Slide 4: Skills Card -> Now Step 3 */}
 					{currentStep === 3 && (
-						<div className="w-full h-full bg-[#E056FD] text-white flex flex-col items-center p-8 animate-in slide-in-from-right duration-500 relative overflow-hidden">
-							{/* Pattern BG: Polka Dots */}
+						<div className="w-full h-full bg-[#E056FD] text-white flex flex-col items-center p-8 relative overflow-hidden">
+							{/* Pattern BG: Polka Dots - Always visible */}
 							<div className="absolute inset-0 opacity-20"
 								style={{
 									backgroundImage: 'radial-gradient(circle, #000 2px, transparent 2.5px)',
@@ -607,140 +758,196 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 								}}
 							/>
 
-							{/* Gradient Blobs */}
+							{/* Gradient Blobs - Always visible */}
 							<div className="absolute top-0 right-0 w-64 h-64 bg-yellow-300 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-pulse" />
 							<div className="absolute bottom-0 left-0 w-64 h-64 bg-cyan-300 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-pulse delay-700" />
 
-							<div className="relative z-10 w-full flex-1 flex flex-col justify-center">
-								<h2 className="text-5xl font-black tracking-tighter mb-10 text-right animate-in slide-in-from-right fade-in duration-1000 delay-100">
-									SKILL
-									<br />
-									<span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-white text-6xl drop-shadow-sm">STACK</span>
-								</h2>
+							<AnimatePresence>
+								{!showQuote && (
+									<motion.div
+										className="relative z-10 w-full h-full flex flex-col justify-center"
+										initial={{ opacity: 0, x: 30 }}
+										animate={{ opacity: 1, x: 0 }}
+										transition={{ duration: 0.6, ease: "easeOut" }}
+									>
+										<motion.h2
+											className="text-5xl font-black tracking-tighter mb-10 text-right"
+											initial={{ opacity: 0, y: -20 }}
+											animate={{ opacity: 1, y: 0 }}
+											transition={{ duration: 0.5, delay: 0.1 }}
+										>
+											SKILL
+											<br />
+											<span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-white text-6xl drop-shadow-sm">STACK</span>
+										</motion.h2>
 
-								<div className="w-full space-y-6">
-									{topSkills.map((skill: any, index: number) => (
-										<div key={skill.id} className="w-full relative group animate-in slide-in-from-bottom-4 fade-in duration-700" style={{ animationDelay: `${300 + index * 100}ms` }}>
-											<div className="flex justify-between mb-2 text-lg font-black uppercase tracking-tight z-10 relative">
-												<span className="bg-black/20 px-2 rounded backdrop-blur-sm">{skill.name}</span>
-												<span className="text-yellow-300 drop-shadow-md">{skill.level.toFixed(2)}</span>
-											</div>
-											<div className="h-6 w-full bg-black/30 rounded-full overflow-hidden border-2 border-black/20 backdrop-blur-sm">
-												<div
-													className="h-full bg-gradient-to-r from-yellow-300 via-white to-yellow-300 rounded-full"
-													style={{
-														width: `${Math.min((skill.level / 10) * 100, 100)}%`,
-														transitionDelay: `${800 + index * 100}ms`
-													}}
-												/>
-											</div>
+										<div className="w-full space-y-6">
+											{topSkills.map((skill: any, index: number) => (
+												<motion.div
+													key={skill.id}
+													className="w-full relative group"
+													initial={{ opacity: 0, x: 20 }}
+													animate={{ opacity: 1, x: 0 }}
+													transition={{ duration: 0.4, delay: 0.2 + index * 0.1 }}
+												>
+													<div className="flex justify-between mb-2 text-lg font-black uppercase tracking-tight z-10 relative">
+														<span className="bg-black/20 px-2 rounded backdrop-blur-sm">{skill.name}</span>
+														<span className="text-yellow-300 drop-shadow-md">{skill.level.toFixed(2)}</span>
+													</div>
+													<div className="h-6 w-full bg-black/30 rounded-full overflow-hidden border-2 border-black/20 backdrop-blur-sm">
+														<motion.div
+															className="h-full bg-gradient-to-r from-yellow-300 via-white to-yellow-300 rounded-full"
+															initial={{ width: 0 }}
+															animate={{ width: `${Math.min((skill.level / 10) * 100, 100)}%` }}
+															transition={{ duration: 1, delay: 0.6 + index * 0.1 }}
+														/>
+													</div>
+												</motion.div>
+											))}
 										</div>
-									))}
-								</div>
 
-								{topSkills.length === 0 && (
-									<div className="bg-white/10 p-6 rounded-2xl text-center border-2 border-white/20 backdrop-blur-md">
-										<p className="font-bold">Loading skills...</p>
-									</div>
+										{topSkills.length === 0 && (
+											<motion.div
+												className="bg-white/10 p-6 rounded-2xl text-center border-2 border-white/20 backdrop-blur-md"
+												initial={{ opacity: 0 }}
+												animate={{ opacity: 1 }}
+												transition={{ duration: 0.5, delay: 0.3 }}
+											>
+												<p className="font-bold">Loading skills...</p>
+											</motion.div>
+										)}
+									</motion.div>
 								)}
-							</div>
+							</AnimatePresence>
 						</div>
 					)}
 
 					{/* Step 4: Log Time Stats */}
 					{currentStep === 4 && (
-						<div className="w-full h-full bg-[#2C3E50] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-500 relative overflow-hidden">
+						<div className="w-full h-full bg-[#2C3E50] text-white flex flex-col items-center p-6 relative overflow-hidden">
+							{/* Background - Always visible */}
 							<div className="absolute inset-0 opacity-10 pointer-events-none">
 								<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] border-[2px] border-white rounded-full animate-[spin_60s_linear_infinite]" />
 								<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] border-[2px] border-white rounded-full animate-[spin_40s_linear_infinite_reverse]" />
 							</div>
 
-							<div className="relative z-10 w-full h-full flex flex-col justify-center">
-								<div className="flex items-center gap-3 mb-8 animate-in slide-in-from-top-4 fade-in duration-700 delay-100">
-									<Clock size={40} className="text-[#3498DB]" />
-									<h2 className="text-4xl font-black uppercase tracking-tighter">
-										Time<br />Machine
-									</h2>
-								</div>
+							{/* Content - Only shows after quote vanishes */}
+							<AnimatePresence>
+								{!showQuote && (
+									<motion.div
+										className="relative z-10 w-full h-full flex flex-col justify-center"
+										initial={{ opacity: 0, y: 20 }}
+										animate={{ opacity: 1, y: 0 }}
+										transition={{ duration: 0.6, ease: "easeOut" }}
+									>
+										<motion.div
+											className="flex items-center gap-3 mb-8"
+											initial={{ opacity: 0, x: -20 }}
+											animate={{ opacity: 1, x: 0 }}
+											transition={{ duration: 0.5, delay: 0.1 }}
+										>
+											<Clock size={40} className="text-[#3498DB]" />
+											<h2 className="text-4xl font-black uppercase tracking-tighter">
+												Time<br />Machine
+											</h2>
+										</motion.div>
 
-								<p className="font-mono font-bold text-sm uppercase opacity-88 mb-8 border-b border-white/20 pb-2 animate-in fade-in duration-700 delay-300">
-									Last <span className="bg-white text-[#000] px-1.5 rounded mx-1 text-base font-black border-2 border-[#3498DB] shadow-[2px_2px_0px_#3498DB] transform -rotate-6 inline-block">4</span> Months Activity
-								</p>
+										<motion.p
+											className="font-mono font-bold text-sm uppercase opacity-88 mb-8 border-b border-white/20 pb-2"
+											initial={{ opacity: 0 }}
+											animate={{ opacity: 1 }}
+											transition={{ duration: 0.5, delay: 0.2 }}
+										>
+											Last <span className="bg-white text-[#000] px-1.5 rounded mx-1 text-base font-black border-2 border-[#3498DB] shadow-[2px_2px_0px_#3498DB] transform -rotate-6 inline-block">4</span> Months Activity
+										</motion.p>
 
-								<div className="space-y-6 w-full max-w-xs mx-auto">
-									<div className="bg-black/20 p-5 rounded-2xl border border-white/10 backdrop-blur-sm">
-										<div className="text-3xl font-black text-[#3498DB]">
-											{formatDuration(maxLogMinutes)}
-										</div>
-										<div className="text-xs uppercase font-bold opacity-60 mt-1">
-											Longest Day
-										</div>
-									</div>
+										<div className="space-y-6 w-full max-w-xs mx-auto">
+											<motion.div
+												className="bg-black/20 p-5 rounded-2xl border border-white/10 backdrop-blur-sm"
+												initial={{ opacity: 0, scale: 0.9 }}
+												animate={{ opacity: 1, scale: 1 }}
+												transition={{ duration: 0.4, delay: 0.3 }}
+											>
+												<div className="text-3xl font-black text-[#3498DB]">
+													{formatDuration(maxLogMinutes)}
+												</div>
+												<div className="text-xs uppercase font-bold opacity-60 mt-1">
+													Longest Day
+												</div>
+											</motion.div>
 
-									<div className="bg-black/20 p-5 rounded-2xl border border-white/10 backdrop-blur-sm">
-										<div className="text-3xl font-black text-white">
-											{formatDuration(avgLogMinutes)}
-										</div>
-										<div className="text-xs uppercase font-bold opacity-60 mt-1">
-											Daily Average
-										</div>
-									</div>
+											<motion.div
+												className="bg-black/20 p-5 rounded-2xl border border-white/10 backdrop-blur-sm"
+												initial={{ opacity: 0, scale: 0.9 }}
+												animate={{ opacity: 1, scale: 1 }}
+												transition={{ duration: 0.4, delay: 0.45 }}
+											>
+												<div className="text-3xl font-black text-white">
+													{formatDuration(avgLogMinutes)}
+												</div>
+												<div className="text-xs uppercase font-bold opacity-60 mt-1">
+													Daily Average
+												</div>
+											</motion.div>
 
-									<div className="bg-white/10 p-5 rounded-2xl border border-white/10 backdrop-blur-sm animate-in slide-in-from-bottom-8 fade-in duration-700 delay-700">
-										<div className="text-3xl font-black text-[#FFD700]">
-											{formatDuration(totalLogMinutes)}
+											<motion.div
+												className="bg-white/10 p-5 rounded-2xl border border-white/10 backdrop-blur-sm"
+												initial={{ opacity: 0, scale: 0.9 }}
+												animate={{ opacity: 1, scale: 1 }}
+												transition={{ duration: 0.4, delay: 0.6 }}
+											>
+												<div className="text-3xl font-black text-[#FFD700]">
+													{formatDuration(totalLogMinutes)}
+												</div>
+												<div className="text-xs uppercase font-bold opacity-60 mt-1">
+													Total Tracked
+												</div>
+											</motion.div>
 										</div>
-										<div className="text-xs uppercase font-bold opacity-60 mt-1">
-											Total Tracked
-										</div>
-									</div>
-								</div>
-							</div>
+									</motion.div>
+								)}
+							</AnimatePresence>
 						</div>
 					)}
 
 					{/* Step 5: The Rhythm (Weekly Activity) */}
+					{/* Step 5: The Rhythm (Weekly Activity) */}
 					{currentStep === 5 && (
-						<div className="w-full h-full bg-[#8E44AD] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-500 relative overflow-hidden">
+						<div className="w-full h-full bg-[#8E44AD] text-white flex flex-col items-center p-6 relative overflow-hidden">
+							{/* Background - Always visible */}
 							<div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
 
-							<div className="relative z-10 w-full h-full flex flex-col justify-center mt-10">
-								<div className="mb-4 flex flex-col items-center text-center animate-in slide-in-from-top-4 fade-in duration-700 delay-100">
-									<h2 className="text-5xl font-black uppercase tracking-tighter leading-none mb-2">
-										The<br /><span className="text-[#F1C40F]">Rhythm</span>
-									</h2>
-									<p className="font-mono text-xs opacity-70 uppercase tracking-widest pl-1">
-										Your Weekly Flow
-									</p>
-								</div>
+							<AnimatePresence>
+								{!showQuote && (
+									<motion.div
+										className="relative z-10 w-full h-full flex flex-col justify-center mt-10"
+										initial={{ opacity: 0, y: 30 }}
+										animate={{ opacity: 1, y: 0 }}
+										transition={{ duration: 0.6, ease: "easeOut" }}
+									>
+										<motion.div
+											className="mb-4 flex flex-col items-center text-center"
+											initial={{ opacity: 0, scale: 0.9 }}
+											animate={{ opacity: 1, scale: 1 }}
+											transition={{ duration: 0.5, delay: 0.1 }}
+										>
+											<h2 className="text-5xl font-black uppercase tracking-tighter leading-none mb-2">
+												The<br /><span className="text-[#F1C40F]">Rhythm</span>
+											</h2>
+											<p className="font-mono text-xs opacity-70 uppercase tracking-widest pl-1">
+												Your Weekly Flow
+											</p>
+										</motion.div>
 
-								{/* Calculation Logic (Inline) */}
-								{(() => {
-									const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-									const dayCounts = [0, 0, 0, 0, 0, 0, 0];
 
-									// Reuse dayIntervals from Step 4 if possible, or recalculate briefly
-									// Since dayIntervals is in scope (calculated above), we iterate it.
-									dayIntervals.forEach((intervals, dateKey) => {
-										const date = new Date(dateKey);
-										const dayIndex = date.getDay(); // 0 = Sun
-
-										let minutes = 0;
-										intervals.forEach(i => {
-											minutes += (i.end - i.start) / 1000 / 60;
-										});
-										dayCounts[dayIndex] += minutes;
-									});
-
-									const maxMinutes = Math.max(...dayCounts, 1); // Avoid div by 0
-									const maxDayIndex = dayCounts.indexOf(Math.max(...dayCounts));
-									const peakDayFull = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][maxDayIndex];
-
-									return (
 										<div className="w-full flex-1 flex flex-col items-center justify-between py-4">
-
 											{/* Peak Day Display */}
-											<div className="flex-1 flex flex-col justify-center items-center text-center gap-6 w-full">
+											<motion.div
+												className="flex-1 flex flex-col justify-center items-center text-center gap-6 w-full"
+												initial={{ opacity: 0, scale: 0.8 }}
+												animate={{ opacity: 1, scale: 1 }}
+												transition={{ duration: 0.5, delay: 0.3 }}
+											>
 												<div className="transform transition hover:scale-105 duration-500">
 													<div className="text-sm font-bold opacity-80 uppercase tracking-widest mb-2">
 														Most Productive Day
@@ -750,108 +957,154 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 													</div>
 												</div>
 
-												<p className="max-w-[280px] text-lg font-medium leading-relaxed opacity-90 bg-black/10 p-4 rounded-xl backdrop-blur-sm border border-white/10">
+												<motion.p
+													className="max-w-[280px] text-lg font-medium leading-relaxed opacity-90 bg-black/10 p-4 rounded-xl backdrop-blur-sm border border-white/10"
+													initial={{ opacity: 0 }}
+													animate={{ opacity: 1 }}
+													transition={{ duration: 0.5, delay: 0.5 }}
+												>
 													"You were absolutely unstoppable this month. Whatever coffee you were drinking, keep buying it."
-												</p>
-											</div>
+												</motion.p>
+											</motion.div>
 
 											{/* Bar Chart */}
 											<div className="w-full h-40 flex items-end justify-between gap-2 px-4 pb-4">
 												{dayCounts.map((minutes, idx) => {
-													const heightPercent = Math.max((minutes / maxMinutes) * 100, 10); // Min 10% for visibility
-													const isPeak = idx === maxDayIndex;
+													const heightPercent = Math.max((minutes / maxWeeklyMinutes) * 100, 10);
+													const isPeak = idx === peakDayIndex;
 
 													return (
 														<div key={idx} className="flex-1 flex flex-col items-center gap-2 group h-full justify-end">
 															<div className="w-full relative flex items-end justify-center h-full">
-																<div
+																<motion.div
 																	className={`w-full rounded-t-lg transition-all duration-1000 ease-out ${isPeak ? 'bg-[#F1C40F] shadow-[0_0_15px_rgba(241,196,15,0.6)]' : 'bg-white/30 group-hover:bg-white/50'}`}
-																	style={{ height: `${heightPercent}%` }}
-																>
-																</div>
-																{/* Tooltipish count */}
+																	initial={{ height: 0 }}
+																	animate={{ height: `${heightPercent}%` }}
+																	transition={{ duration: 1, delay: 0.7 + idx * 0.1 }}
+																/>
 																<div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] font-bold px-2 py-1 rounded whitespace-nowrap pointer-events-none transition-opacity z-20">
 																	{Math.round(minutes / 60)}h
 																</div>
 															</div>
-															<div className={`text-xs font-black uppercase tracking-tighter ${isPeak ? 'text-[#F1C40F]' : 'text-white/50'}`}>
-																{daysOfWeek[idx]}
-															</div>
+															<motion.div
+																className={`text-xs font-black uppercase tracking-tighter ${isPeak ? 'text-[#F1C40F]' : 'text-white/50'}`}
+																initial={{ opacity: 0 }}
+																animate={{ opacity: 1 }}
+																transition={{ duration: 0.3, delay: 1 + idx * 0.1 }}
+															>
+																{daysOfWeekLabels[idx]}
+															</motion.div>
 														</div>
 													);
 												})}
 											</div>
 										</div>
-									);
-								})()}
-							</div>
+									</motion.div>
+								)}
+							</AnimatePresence>
 						</div>
 					)}
 
 					{/* Step 6: Group Projects -> Now Step 7 */}
 					{currentStep === 7 && (
-						<div className="w-full h-full bg-[#E74C3C] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-500 relative overflow-hidden">
+						<div className="w-full h-full bg-[#E74C3C] text-white flex flex-col items-center p-6 relative overflow-hidden">
+							{/* Background - Always visible */}
 							<div className="absolute inset-0 opacity-20 pointer-events-none">
 								<Users size={400} className="absolute -bottom-20 -right-20 rotate-12 opacity-30" />
 							</div>
 
-							<div className="relative z-10 w-full h-full flex flex-col pt-12">
-								<h2 className="text-5xl font-black uppercase tracking-tighter mb-8 text-left leading-[0.85] animate-in slide-in-from-left fade-in duration-700 delay-100">
-									Dream<br /><span className="text-black bg-white px-2">Team</span>
-								</h2>
+							<AnimatePresence>
+								{!showQuote && (
+									<motion.div
+										className="relative z-10 w-full h-full flex flex-col pt-12"
+										initial={{ opacity: 0, x: -30 }}
+										animate={{ opacity: 1, x: 0 }}
+										transition={{ duration: 0.6, ease: "easeOut" }}
+									>
+										<motion.h2
+											className="text-5xl font-black uppercase tracking-tighter mb-8 text-left leading-[0.85]"
+											initial={{ opacity: 0, scale: 0.9 }}
+											animate={{ opacity: 1, scale: 1 }}
+											transition={{ duration: 0.5, delay: 0.1 }}
+										>
+											Dream<br /><span className="text-black bg-white px-2">Team</span>
+										</motion.h2>
 
-								<div className="flex-1 overflow-y-auto w-full no-scrollbar space-y-4 pb-12">
-									{groupTeams.length > 0 ? (
-										groupTeams.map((team: any, idx: number) => (
-											<div key={team.id} className="bg-black/20 p-4 rounded-xl border-l-4 border-white backdrop-blur-sm hover:bg-black/30 transition-colors animate-in slide-in-from-bottom-4 fade-in duration-500" style={{ animationDelay: `${300 + idx * 150}ms` }}>
-												<div className="font-bold text-xl mb-1">
-													{team.project_id /* Ideally retrieve project name from ID or included data */}
-													{/* If 'project' object not populated, try to check if 'name' exists on team or project relation */}
-													{team.name || `Team #${team.id}`}
-												</div>
-												<div className="flex -space-x-2 overflow-hidden mt-3">
-													{team.users?.map((u: any) => (
-														<div key={u.id} className="inline-block h-8 w-8 rounded-full ring-2 ring-[#E74C3C] bg-gray-800 flex items-center justify-center text-xs font-bold overflow-hidden" title={u.login}>
-															{u.image?.versions?.small || u.image?.link ? (
-																<img
-																	src={u.image.versions?.small || u.image.link}
-																	alt={u.login}
-																	className="w-full h-full object-cover"
-																/>
-															) : (
-																u.login?.[0]?.toUpperCase()
-															)}
+										<div className="flex-1 overflow-y-auto w-full no-scrollbar space-y-4 pb-12">
+											{groupTeams.length > 0 ? (
+												groupTeams.map((team: any, idx: number) => (
+													<motion.div
+														key={team.id}
+														className="bg-black/20 p-4 rounded-xl border-l-4 border-white backdrop-blur-sm hover:bg-black/30 transition-colors"
+														initial={{ opacity: 0, y: 20 }}
+														animate={{ opacity: 1, y: 0 }}
+														transition={{ duration: 0.4, delay: 0.2 + idx * 0.1 }}
+													>
+														<div className="font-bold text-xl mb-1">
+															{team.name || `Team #${team.id}`}
 														</div>
-													))}
-												</div>
-												<div className="items-center mt-2 text-xs font-mono opacity-70 flex gap-2">
-													<Users size={12} />
-													{team.users?.length || 0} Members
-												</div>
-											</div>
-										))
-									) : (
-										<div className="h-40 flex items-center justify-center bg-white/10 rounded-2xl border-2 border-dashed border-white/30">
-											<div className="text-center opacity-70">
-												<p className="font-bold">No group projects</p>
-												<p className="text-xs">in 2025</p>
-											</div>
+														<div className="flex -space-x-2 overflow-hidden mt-3">
+															{team.users?.map((u: any, uIdx: number) => (
+																<motion.div
+																	key={u.id}
+																	className="inline-block h-8 w-8 rounded-full ring-2 ring-[#E74C3C] bg-gray-800 flex items-center justify-center text-xs font-bold overflow-hidden"
+																	title={u.login}
+																	initial={{ scale: 0 }}
+																	animate={{ scale: 1 }}
+																	transition={{ duration: 0.3, delay: 0.4 + idx * 0.1 + uIdx * 0.05 }}
+																>
+																	{u.image?.versions?.small || u.image?.link ? (
+																		<img
+																			src={u.image.versions?.small || u.image.link}
+																			alt={u.login}
+																			className="w-full h-full object-cover"
+																		/>
+																	) : (
+																		u.login?.[0]?.toUpperCase()
+																	)}
+																</motion.div>
+															))}
+														</div>
+														<div className="items-center mt-2 text-xs font-mono opacity-70 flex gap-2">
+															<Users size={12} />
+															{team.users?.length || 0} Members
+														</div>
+													</motion.div>
+												))
+											) : (
+												<motion.div
+													className="h-40 flex items-center justify-center bg-white/10 rounded-2xl border-2 border-dashed border-white/30"
+													initial={{ opacity: 0 }}
+													animate={{ opacity: 1 }}
+													transition={{ duration: 0.5, delay: 0.3 }}
+												>
+													<div className="text-center opacity-70">
+														<p className="font-bold">No group projects</p>
+														<p className="text-xs">in 2025</p>
+													</div>
+												</motion.div>
+											)}
 										</div>
-									)}
-								</div>
 
-								<div className="mt-4 pt-4 border-t border-white/20 text-center">
-									<div className="text-4xl font-black">{groupTeams.length}</div>
-									<div className="text-xs uppercase font-bold tracking-widest opacity-70">Co-op Missions</div>
-								</div>
-							</div>
+										<motion.div
+											className="mt-4 pt-4 border-t border-white/20 text-center"
+											initial={{ opacity: 0, y: 20 }}
+											animate={{ opacity: 1, y: 0 }}
+											transition={{ duration: 0.5, delay: 0.8 }}
+										>
+											<div className="text-4xl font-black">{groupTeams.length}</div>
+											<div className="text-xs uppercase font-bold tracking-widest opacity-70">Co-op Missions</div>
+										</motion.div>
+									</motion.div>
+								)}
+							</AnimatePresence>
 						</div>
 					)}
 
 					{/* Step 7: Bonus Projects (Over Achiever) - was previously Step 4 -> Now Step 2 */}
 					{currentStep === 2 && (
-						<div className="w-full h-full bg-[#FFD700] text-black flex flex-col items-center p-8 animate-in slide-in-from-right duration-500 relative overflow-hidden">
-							{/* Trippy Geometric BG */}
+						<div className="w-full h-full bg-[#FFD700] text-black flex flex-col items-center p-8 relative overflow-hidden">
+							{/* Trippy Geometric BG - Always visible */}
 							<div className="absolute inset-0 z-0 opacity-20">
 								{Array.from({ length: 12 }).map((_, i) => (
 									<div
@@ -868,43 +1121,78 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 								))}
 							</div>
 
-							<div className="relative z-10 w-full flex-1 flex flex-col justify-center">
-								<h2 className="text-6xl font-black tracking-tighter mb-2 text-center leading-[0.8]">
-									OVER
-									<br />
-									<span className="text-white drop-shadow-[4px_4px_0px_rgba(0,0,0,1)]">ACHIEVER</span>
-								</h2>
-								<p className="text-center font-bold uppercase tracking-widest opacity-80 mb-10">
-									Going above & beyond
-								</p>
+							<AnimatePresence>
+								{!showQuote && (
+									<motion.div
+										className="relative z-10 w-full flex-1 flex flex-col justify-center"
+										initial={{ opacity: 0, scale: 0.9 }}
+										animate={{ opacity: 1, scale: 1 }}
+										transition={{ duration: 0.6, ease: "easeOut" }}
+									>
+										<motion.h2
+											className="text-6xl font-black tracking-tighter mb-2 text-center leading-[0.8]"
+											initial={{ opacity: 0, y: -20 }}
+											animate={{ opacity: 1, y: 0 }}
+											transition={{ duration: 0.5, delay: 0.1 }}
+										>
+											OVER
+											<br />
+											<span className="text-white drop-shadow-[4px_4px_0px_rgba(0,0,0,1)]">ACHIEVER</span>
+										</motion.h2>
+										<motion.p
+											className="text-center font-bold uppercase tracking-widest opacity-80 mb-10"
+											initial={{ opacity: 0 }}
+											animate={{ opacity: 1 }}
+											transition={{ duration: 0.5, delay: 0.2 }}
+										>
+											Going above & beyond
+										</motion.p>
 
-								<div className="space-y-4 w-full">
-									{bonusProjects.length > 0 ? (
-										bonusProjects.map((p: any) => (
-											<div key={p.id} className="relative bg-black text-[#FFD700] p-4 rounded-xl border-2 border-black transform transition hover:scale-105 hover:-rotate-1">
-												<div className="flex justify-between items-baseline">
-													<span className="text-lg font-black truncate w-2/3">{p.project.name}</span>
-													<span className="text-3xl font-black">{p.final_mark}%</span>
-												</div>
-												<div className="absolute -top-2 -right-2 bg-white text-black text-[10px] font-bold px-2 py-0.5 rounded-full border border-black">
-													BONUS
-												</div>
-											</div>
-										))
-									) : (
-										<div className="bg-black/10 p-6 rounded-2xl text-center border-2 border-black/10">
-											<p className="font-bold">No bonus projects yet.</p>
-											<p className="text-sm opacity-70">Push harder next year!</p>
+										<div className="space-y-4 w-full">
+											{bonusProjects.length > 0 ? (
+												bonusProjects.map((p: any, idx: number) => (
+													<motion.div
+														key={p.id}
+														className="relative bg-black text-[#FFD700] p-4 rounded-xl border-2 border-black transform transition hover:scale-105 hover:-rotate-1"
+														initial={{ opacity: 0, x: -30 }}
+														animate={{ opacity: 1, x: 0 }}
+														transition={{ duration: 0.4, delay: 0.3 + idx * 0.1 }}
+													>
+														<div className="flex justify-between items-baseline">
+															<span className="text-lg font-black truncate w-2/3">{p.project.name}</span>
+															<span className="text-3xl font-black">{p.final_mark}%</span>
+														</div>
+														<div className="absolute -top-2 -right-2 bg-white text-black text-[10px] font-bold px-2 py-0.5 rounded-full border border-black">
+															BONUS
+														</div>
+													</motion.div>
+												))
+											) : (
+												<motion.div
+													className="bg-black/10 p-6 rounded-2xl text-center border-2 border-black/10"
+													initial={{ opacity: 0 }}
+													animate={{ opacity: 1 }}
+													transition={{ duration: 0.5, delay: 0.3 }}
+												>
+													<p className="font-bold">No bonus projects yet.</p>
+													<p className="text-sm opacity-70">Push harder next year!</p>
+												</motion.div>
+											)}
 										</div>
-									)}
-								</div>
 
-								{bonusProjects.length > 0 && (
-									<div className="mt-8 text-center font-bold uppercase text-xs tracking-widest bg-black text-white py-1 px-3 rounded-full self-center">
-										{bonusProjects.length} Projects &gt; 100%
-									</div>
+										{bonusProjects.length > 0 && (
+											<motion.div
+												className="mt-8 text-center font-bold uppercase text-xs tracking-widest bg-black text-white py-1 px-3 rounded-full self-center"
+												initial={{ opacity: 0, y: 20 }}
+												animate={{ opacity: 1, y: 0 }}
+												transition={{ duration: 0.5, delay: 0.7 }}
+											>
+												{bonusProjects.length} Projects &gt; 100%
+											</motion.div>
+										)}
+									</motion.div>
 								)}
-							</div>
+							</AnimatePresence>
 						</div>
 					)}
 
@@ -913,43 +1201,73 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 					{/* Step 8: Time Wrapped (Evaluations Duration) */}
 					{currentStep === 8 && (
-						<div className="w-full h-full bg-[#34495E] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-500 relative overflow-hidden">
+						<div className="w-full h-full bg-[#34495E] text-white flex flex-col items-center p-6 relative overflow-hidden">
+							{/* Background - Always visible */}
 							<div className="absolute inset-0 opacity-10 pointer-events-none">
 								<Clock size={400} className="absolute -left-20 -bottom-20 rotate-12" />
 							</div>
 
-							<div className="relative z-10 w-full h-full flex flex-col justify-center">
-								<h2 className="text-5xl font-black uppercase tracking-tighter mb-10 text-right leading-none">
-									Time<br />
-									<span className="text-[#3498DB]">Wrapped</span>
-								</h2>
+							<AnimatePresence>
+								{!showQuote && (
+									<motion.div
+										className="relative z-10 w-full h-full flex flex-col justify-center"
+										initial={{ opacity: 0, scale: 0.9 }}
+										animate={{ opacity: 1, scale: 1 }}
+										transition={{ duration: 0.6 }}
+									>
+										<motion.h2
+											className="text-5xl font-black uppercase tracking-tighter mb-10 text-right leading-none"
+											initial={{ opacity: 0, x: 30 }}
+											animate={{ opacity: 1, x: 0 }}
+											transition={{ duration: 0.5, delay: 0.1 }}
+										>
+											Time<br />
+											<span className="text-[#3498DB]">Wrapped</span>
+										</motion.h2>
 
-								<div className="space-y-6">
-									<div className="bg-white/10 p-4 rounded-xl backdrop-blur-md border-l-4 border-[#3498DB] animate-in slide-in-from-bottom-4 fade-in duration-500 delay-100">
-										<p className="text-xs font-bold uppercase opacity-60 mb-1">Fastest Eval</p>
-										<div className="text-3xl font-black">{fastestEval.toFixed(0)} min</div>
-										<p className="text-xs opacity-70 italic">Speedy gonzales!</p>
-									</div>
+										<div className="space-y-6">
+											<motion.div
+												className="bg-white/10 p-4 rounded-xl backdrop-blur-md border-l-4 border-[#3498DB]"
+												initial={{ opacity: 0, y: 20 }}
+												animate={{ opacity: 1, y: 0 }}
+												transition={{ duration: 0.4, delay: 0.2 }}
+											>
+												<p className="text-xs font-bold uppercase opacity-60 mb-1">Fastest Eval</p>
+												<div className="text-3xl font-black">{fastestEval.toFixed(0)} min</div>
+												<p className="text-xs opacity-70 italic">Speedy gonzales!</p>
+											</motion.div>
 
-									<div className="bg-white/10 p-4 rounded-xl backdrop-blur-md border-l-4 border-[#E74C3C] animate-in slide-in-from-bottom-4 fade-in duration-500 delay-300">
-										<p className="text-xs font-bold uppercase opacity-60 mb-1">Longest Eval</p>
-										<div className="text-3xl font-black">{longestEval.toFixed(0)} min</div>
-										<p className="text-xs opacity-70 italic">We don't talk about it...</p>
-									</div>
+											<motion.div
+												className="bg-white/10 p-4 rounded-xl backdrop-blur-md border-l-4 border-[#E74C3C]"
+												initial={{ opacity: 0, y: 20 }}
+												animate={{ opacity: 1, y: 0 }}
+												transition={{ duration: 0.4, delay: 0.4 }}
+											>
+												<p className="text-xs font-bold uppercase opacity-60 mb-1">Longest Eval</p>
+												<div className="text-3xl font-black">{longestEval.toFixed(0)} min</div>
+												<p className="text-xs opacity-70 italic">We don't talk about it...</p>
+											</motion.div>
 
-									<div className="bg-white/10 p-4 rounded-xl backdrop-blur-md border-l-4 border-[#2ECC71] animate-in slide-in-from-bottom-4 fade-in duration-500 delay-500">
-										<p className="text-xs font-bold uppercase opacity-60 mb-1">Avg Duration</p>
-										<div className="text-3xl font-black">{avgEvalTime} min</div>
-									</div>
-								</div>
-							</div>
+											<motion.div
+												className="bg-white/10 p-4 rounded-xl backdrop-blur-md border-l-4 border-[#2ECC71]"
+												initial={{ opacity: 0, y: 20 }}
+												animate={{ opacity: 1, y: 0 }}
+												transition={{ duration: 0.4, delay: 0.6 }}
+											>
+												<p className="text-xs font-bold uppercase opacity-60 mb-1">Avg Duration</p>
+												<div className="text-3xl font-black">{avgEvalTime} min</div>
+											</motion.div>
+										</div>
+									</motion.div>
+								)}
+							</AnimatePresence>
 						</div>
 					)}
 
 					{/* Step 9: Quality Check */}
 					{currentStep === 9 && (
-						<div className="w-full h-full bg-[#16213E] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-500 relative overflow-hidden">
-							{/* Fancy Background */}
+						<div className="w-full h-full bg-[#16213E] text-white flex flex-col items-center p-6 relative overflow-hidden">
+							{/* Fancy Background - Always visible */}
 							<div className="absolute inset-0 bg-gradient-to-br from-[#1A1A2E] via-[#16213E] to-[#0F3460] z-0" />
 							<div className="absolute top-0 right-0 w-full h-full opacity-20"
 								style={{
@@ -957,326 +1275,480 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 								}}
 							/>
 
-							{/* Floating Particles */}
+							{/* Floating Particles - Always visible */}
 							<div className="absolute top-10 left-10 w-4 h-4 bg-[#4CC9F0] rounded-full animate-bounce duration-[3s]" />
 							<div className="absolute bottom-20 right-10 w-6 h-6 bg-[#4361EE] rounded-full animate-bounce duration-[5s] delay-700" />
 
-							<div className="relative z-10 w-full h-full flex flex-col justify-center">
-								<h2 className="text-5xl font-black uppercase tracking-tighter mb-10 text-center relative max-w-xs mx-auto">
-									<span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-[#4CC9F0] to-[#4361EE] drop-shadow-sm animate-in slide-in-from-top duration-700">
-										Quality<br />Control
-									</span>
-									<div className="absolute -inset-4 bg-white/5 blur-xl rounded-full z-0" />
-								</h2>
+							<AnimatePresence>
+								{!showQuote && (
+									<motion.div
+										className="relative z-10 w-full h-full flex flex-col justify-center"
+										initial={{ opacity: 0, scale: 0.8 }}
+										animate={{ opacity: 1, scale: 1 }}
+										transition={{ duration: 0.6, ease: "backOut" }}
+									>
+										<motion.h2
+											className="text-5xl font-black uppercase tracking-tighter mb-10 text-center relative max-w-xs mx-auto"
+											initial={{ opacity: 0, y: -20 }}
+											animate={{ opacity: 1, y: 0 }}
+											transition={{ duration: 0.5, delay: 0.1 }}
+										>
+											<span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-[#4CC9F0] to-[#4361EE] drop-shadow-sm">
+												Quality<br />Control
+											</span>
+											<div className="absolute -inset-4 bg-white/5 blur-xl rounded-full z-0" />
+										</motion.h2>
 
-								<div className="grid grid-cols-1 gap-6 w-full max-w-xs mx-auto">
-									<div className="group bg-white/5 backdrop-blur-md p-6 rounded-3xl border border-white/10 hover:bg-white/10 transition-all duration-300 hover:scale-105 border-l-4 border-l-[#4CC9F0]">
-										<div className="text-6xl font-black mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white to-gray-400 group-hover:scale-110 transition-transform origin-left">
-											{outstandingCount}
-										</div>
-										<div className="text-sm font-bold uppercase tracking-widest text-[#4CC9F0] opacity-80 animate-pulse">
-											Outstanding
-										</div>
-										<div className="text-[10px] mt-1 opacity-50 font-mono">
-											Projects &gt; 100%
-										</div>
-									</div>
+										<div className="grid grid-cols-1 gap-6 w-full max-w-xs mx-auto">
+											<motion.div
+												className="group bg-white/5 backdrop-blur-md p-6 rounded-3xl border border-white/10 hover:bg-white/10 transition-all duration-300 hover:scale-105 border-l-4 border-l-[#4CC9F0]"
+												initial={{ opacity: 0, scale: 0.9 }}
+												animate={{ opacity: 1, scale: 1 }}
+												transition={{ duration: 0.4, delay: 0.3 }}
+											>
+												<div className="text-6xl font-black mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white to-gray-400 group-hover:scale-110 transition-transform origin-left">
+													{outstandingCount}
+												</div>
+												<div className="text-sm font-bold uppercase tracking-widest text-[#4CC9F0] opacity-80 animate-pulse">
+													Outstanding
+												</div>
+												<div className="text-[10px] mt-1 opacity-50 font-mono">
+													Projects &gt; 100%
+												</div>
+											</motion.div>
 
-									<div className="flex gap-4">
-										<div className="flex-1 bg-white/5 backdrop-blur-md p-4 rounded-3xl border border-white/10 border-l-4 border-l-[#4361EE] hover:-translate-y-1 transition-transform">
-											<div className="text-3xl font-black mb-1 text-white">
-												{leakFreeRate}%
-											</div>
-											<div className="text-[10px] font-bold uppercase text-[#4361EE] tracking-wider">
-												Clean Code
+											<div className="flex gap-4">
+												<motion.div
+													className="flex-1 bg-white/5 backdrop-blur-md p-4 rounded-3xl border border-white/10 border-l-4 border-l-[#4361EE] hover:-translate-y-1 transition-transform"
+													initial={{ opacity: 0, x: -20 }}
+													animate={{ opacity: 1, x: 0 }}
+													transition={{ duration: 0.4, delay: 0.5 }}
+												>
+													<div className="text-3xl font-black mb-1 text-white">
+														{leakFreeRate}%
+													</div>
+													<div className="text-[10px] font-bold uppercase text-[#4361EE] tracking-wider">
+														Clean Code
+													</div>
+												</motion.div>
+												<motion.div
+													className="flex-1 bg-white/5 backdrop-blur-md p-4 rounded-3xl border border-white/10 border-l-4 border-l-[#F72585] hover:-translate-y-1 transition-transform"
+													initial={{ opacity: 0, x: 20 }}
+													animate={{ opacity: 1, x: 0 }}
+													transition={{ duration: 0.4, delay: 0.6 }}
+												>
+													<div className="text-lg font-black mb-1 truncate text-white leading-8">
+														{mostCommonFlag}
+													</div>
+													<div className="text-[10px] font-bold uppercase text-[#F72585] tracking-wider">
+														Top Flag
+													</div>
+												</motion.div>
 											</div>
 										</div>
-										<div className="flex-1 bg-white/5 backdrop-blur-md p-4 rounded-3xl border border-white/10 border-l-4 border-l-[#F72585] hover:-translate-y-1 transition-transform delay-100">
-											<div className="text-lg font-black mb-1 truncate text-white leading-8">
-												{mostCommonFlag}
-											</div>
-											<div className="text-[10px] font-bold uppercase text-[#F72585] tracking-wider">
-												Top Flag
-											</div>
-										</div>
-									</div>
-								</div>
-							</div>
+									</motion.div>
+								)}
+							</AnimatePresence>
 						</div>
 					)}
 
 					{/* Step 10: Peer Wrapped */}
 					{currentStep === 10 && (
-						<div className="w-full h-full bg-[#240046] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-500 relative overflow-hidden">
-							{/* Background */}
+						<div className="w-full h-full bg-[#240046] text-white flex flex-col items-center p-6 relative overflow-hidden">
+							{/* Background - Always visible */}
 							<div className="absolute inset-0 z-0">
 								<div className="absolute inset-0 bg-gradient-to-b from-[#3c096c] to-[#10002b]" />
 								<div className="absolute top-0 left-0 right-0 h-64 bg-gradient-to-b from-[#5a189a]/30 to-transparent" />
 							</div>
 
-							<div className="relative z-10 w-full h-full flex flex-col justify-center">
-								<h2 className="text-5xl font-black uppercase tracking-tighter mb-8 text-center leading-none drop-shadow-[0_4px_0_rgba(0,0,0,1)] animate-in zoom-in duration-500">
-									Peer<br />
-									<span className="text-[#e0aaff]">Review</span>
-								</h2>
+							<AnimatePresence>
+								{!showQuote && (
+									<motion.div
+										className="relative z-10 w-full h-full flex flex-col justify-center"
+										initial={{ opacity: 0, scale: 0.9 }}
+										animate={{ opacity: 1, scale: 1 }}
+										transition={{ duration: 0.6 }}
+									>
+										<motion.h2
+											className="text-5xl font-black uppercase tracking-tighter mb-8 text-center leading-none drop-shadow-[0_4px_0_rgba(0,0,0,1)]"
+											initial={{ opacity: 0, y: -20 }}
+											animate={{ opacity: 1, y: 0 }}
+											transition={{ duration: 0.5, delay: 0.1 }}
+										>
+											Peer<br />
+											<span className="text-[#e0aaff]">Review</span>
+										</motion.h2>
 
-								{/* Main Stats Card */}
-								<div className="bg-[#e0aaff] text-[#240046] p-6 rounded-3xl shadow-[8px_8px_0px_rgba(0,0,0,0.5)] mb-6 transform -rotate-1 hover:rotate-0 transition-transform duration-300">
-									<div className="flex items-center gap-4 mb-2">
-										<div className="text-6xl font-black">{avgPeerRating}</div>
-										<div className="flex flex-col">
-											<div className="flex text-[#ffce00] text-xl">
-												{'★'.repeat(Math.round(Number(avgPeerRating) || 0))}
+										{/* Main Stats Card */}
+										<motion.div
+											className="bg-[#e0aaff] text-[#240046] p-6 rounded-3xl shadow-[8px_8px_0px_rgba(0,0,0,0.5)] mb-6 transform -rotate-1 hover:rotate-0 transition-transform duration-300"
+											initial={{ opacity: 0, x: -30 }}
+											animate={{ opacity: 1, x: 0 }}
+											transition={{ duration: 0.5, delay: 0.3 }}
+										>
+											<div className="flex items-center gap-4 mb-2">
+												<div className="text-6xl font-black">{avgPeerRating}</div>
+												<div className="flex flex-col">
+													<div className="flex text-[#ffce00] text-xl">
+														{'★'.repeat(Math.round(Number(avgPeerRating) || 0))}
+													</div>
+													<div className="text-xs font-bold uppercase tracking-widest leading-tight opacity-70">
+														Avg Rating
+													</div>
+												</div>
 											</div>
-											<div className="text-xs font-bold uppercase tracking-widest leading-tight opacity-70">
-												Avg Rating
+											<p className="font-bold italic text-sm opacity-90 border-t border-[#240046]/20 pt-2 mt-2">
+												{Number(avgPeerRating) > 4.5 ? '"Certified Legend."' : '"Solid contributor."'}
+											</p>
+										</motion.div>
+
+										{/* Top Evaluators List */}
+										<div className="w-full mb-6">
+											<p className="text-xs font-bold uppercase tracking-widest opacity-60 mb-3 ml-2">Frequent Guests</p>
+											<div className="space-y-2">
+												{topEvaluators.map((ev, i) => (
+													<motion.div
+														key={ev.name}
+														className="flex items-center justify-between bg-white/10 p-3 rounded-xl backdrop-blur-sm border border-white/5"
+														initial={{ opacity: 0, x: 20 }}
+														animate={{ opacity: 1, x: 0 }}
+														transition={{ duration: 0.4, delay: 0.5 + i * 0.1 }}
+													>
+														<div className="flex items-center gap-3">
+															<div className="w-6 h-6 rounded-full bg-[#e0aaff] text-[#240046] flex items-center justify-center font-bold text-xs shadow-sm">
+																{i + 1}
+															</div>
+															<span className="font-bold text-sm tracking-wide">{ev.name}</span>
+														</div>
+														<span className="text-xs font-mono opacity-50">{ev.count}x</span>
+													</motion.div>
+												))}
+												{topEvaluators.length === 0 && (
+													<motion.div
+														className="p-4 text-center text-sm opacity-50 italic"
+														initial={{ opacity: 0 }}
+														animate={{ opacity: 1 }}
+														transition={{ duration: 0.5, delay: 0.6 }}
+													>
+														No evaluations yet
+													</motion.div>
+												)}
 											</div>
 										</div>
-									</div>
-									<p className="font-bold italic text-sm opacity-90 border-t border-[#240046]/20 pt-2 mt-2">
-										{Number(avgPeerRating) > 4.5 ? '"Certified Legend."' : '"Solid contributor."'}
-									</p>
-								</div>
 
-								{/* Top Evaluators List */}
-								<div className="w-full mb-6">
-									<p className="text-xs font-bold uppercase tracking-widest opacity-60 mb-3 ml-2">Frequent Guests</p>
-									<div className="space-y-2">
-										{topEvaluators.map((ev, i) => (
-											<div key={ev.name} className="flex items-center justify-between bg-white/10 p-3 rounded-xl backdrop-blur-sm border border-white/5 animate-in slide-in-from-left fade-in duration-500" style={{ animationDelay: `${i * 150}ms` }}>
-												<div className="flex items-center gap-3">
-													<div className="w-6 h-6 rounded-full bg-[#e0aaff] text-[#240046] flex items-center justify-center font-bold text-xs shadow-sm">
-														{i + 1}
-													</div>
-													<span className="font-bold text-sm tracking-wide">{ev.name}</span>
-												</div>
-												<span className="text-xs font-mono opacity-50">{ev.count}x</span>
-											</div>
-										))}
-										{topEvaluators.length === 0 && (
-											<div className="p-4 text-center text-sm opacity-50 italic">No evaluations yet</div>
+										{/* Nicest Feedback */}
+										{nicestFeedback && (
+											<motion.div
+												className="bg-[#240046]/50 p-4 rounded-xl border border-[#e0aaff]/30 backdrop-blur-sm relative mt-auto max-h-[120px] overflow-hidden"
+												initial={{ opacity: 0, y: 30 }}
+												animate={{ opacity: 1, y: 0 }}
+												transition={{ duration: 0.5, delay: 0.8 }}
+											>
+												<div className="absolute -top-3 -right-2 text-2xl rotate-12 animate-pulse">❤️</div>
+												<p className="text-[10px] font-bold text-[#e0aaff] uppercase mb-1">Highlight</p>
+												<p className="text-xs italic leading-relaxed opacity-90 line-clamp-3">"{nicestFeedback.feedback}"</p>
+											</motion.div>
 										)}
-									</div>
-								</div>
-
-								{/* Nicest Feedback */}
-								{nicestFeedback && (
-									<div className="bg-[#240046]/50 p-4 rounded-xl border border-[#e0aaff]/30 backdrop-blur-sm relative mt-auto max-h-[120px] overflow-hidden">
-										<div className="absolute -top-3 -right-2 text-2xl rotate-12 animate-pulse">❤️</div>
-										<p className="text-[10px] font-bold text-[#e0aaff] uppercase mb-1">Highlight</p>
-										<p className="text-xs italic leading-relaxed opacity-90 line-clamp-3">"{nicestFeedback.feedback}"</p>
-									</div>
+									</motion.div>
 								)}
-							</div>
+							</AnimatePresence>
 						</div>
 					)}
 
 					{/* Step 11: Identity Stats (The 42 DNA) - was Step 12/8 */}
 					{currentStep === 11 && (
-						<div className="w-full h-full bg-[#1db954] text-black flex flex-col items-center p-6 animate-in slide-in-from-right duration-500 relative overflow-hidden">
-							{/* Pattern BG */}
+						<div className="w-full h-full bg-[#1db954] text-black flex flex-col items-center p-6 relative overflow-hidden">
+							{/* Pattern BG - Always visible */}
 							<div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, #000 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
 
-							<div className="relative z-10 w-full h-full flex flex-col justify-center gap-6">
-								<div className="text-center">
-									<h2 className="text-5xl font-black tracking-tighter text-black inline-block border-b-4 border-black pb-2">
-										THE 42 DNA
-									</h2>
-								</div>
+							<AnimatePresence>
+								{!showQuote && (
+									<motion.div
+										className="relative z-10 w-full h-full flex flex-col justify-center gap-6"
+										initial={{ opacity: 0, x: 30 }}
+										animate={{ opacity: 1, x: 0 }}
+										transition={{ duration: 0.6 }}
+									>
+										<motion.div
+											className="text-center"
+											initial={{ opacity: 0, y: -20 }}
+											animate={{ opacity: 1, y: 0 }}
+											transition={{ duration: 0.5, delay: 0.1 }}
+										>
+											<h2 className="text-5xl font-black tracking-tighter text-black inline-block border-b-4 border-black pb-2">
+												THE 42 DNA
+											</h2>
+										</motion.div>
 
-								<div className="grid grid-cols-2 gap-4">
-									{/* Campus */}
-									<div className="bg-black text-[#1db954] p-5 rounded-2xl flex flex-col aspect-square justify-between group hover:scale-105 transition-transform">
-										<div className="text-xs font-bold uppercase tracking-widest text-[#1db954]/70">Campus</div>
-										<div className="text-2xl font-black break-words leading-tight">
-											{user.campus?.[0]?.name || "42"}
-										</div>
-										<div className="w-8 h-8 rounded-full bg-[#1db954] text-black flex items-center justify-center font-bold">
-											C
-										</div>
-									</div>
+										<div className="grid grid-cols-2 gap-4">
+											{/* Campus */}
+											<motion.div
+												className="bg-black text-[#1db954] p-5 rounded-2xl flex flex-col aspect-square justify-between group hover:scale-105 transition-transform"
+												initial={{ opacity: 0, scale: 0.8 }}
+												animate={{ opacity: 1, scale: 1 }}
+												transition={{ duration: 0.4, delay: 0.2 }}
+											>
+												<div className="text-xs font-bold uppercase tracking-widest text-[#1db954]/70">Campus</div>
+												<div className="text-2xl font-black break-words leading-tight">
+													{user.campus?.[0]?.name || "42"}
+												</div>
+												<div className="w-8 h-8 rounded-full bg-[#1db954] text-black flex items-center justify-center font-bold">
+													C
+												</div>
+											</motion.div>
 
-									{/* Wallet */}
-									<div className="bg-white text-black p-5 rounded-2xl flex flex-col aspect-square justify-between border-2 border-black group hover:scale-105 transition-transform">
-										<div className="text-xs font-bold uppercase tracking-widest opacity-60">Wallet</div>
-										<div className="text-5xl font-black">
-											{user.wallet}
-											<span className="text-lg align-top">₳</span>
-										</div>
-										<div className="text-xs font-bold">Manage it wisely</div>
-									</div>
+											{/* Wallet */}
+											<motion.div
+												className="bg-white text-black p-5 rounded-2xl flex flex-col aspect-square justify-between border-2 border-black group hover:scale-105 transition-transform"
+												initial={{ opacity: 0, scale: 0.8 }}
+												animate={{ opacity: 1, scale: 1 }}
+												transition={{ duration: 0.4, delay: 0.3 }}
+											>
+												<div className="text-xs font-bold uppercase tracking-widest opacity-60">Wallet</div>
+												<div className="text-5xl font-black">
+													{user.wallet}
+													<span className="text-lg align-top">₳</span>
+												</div>
+												<div className="text-xs font-bold">Manage it wisely</div>
+											</motion.div>
 
-									{/* Eval Points */}
-									<div className="bg-[#191414] text-white p-5 rounded-2xl flex flex-col aspect-square justify-between group hover:scale-105 transition-transform">
-										<div className="text-xs font-bold uppercase tracking-widest opacity-60">Eval Points</div>
-										<div className="text-5xl font-black text-[#FFD700] drop-shadow-lg">
-											{user.correction_point}
-										</div>
-									</div>
+											{/* Eval Points */}
+											<motion.div
+												className="bg-[#191414] text-white p-5 rounded-2xl flex flex-col aspect-square justify-between group hover:scale-105 transition-transform"
+												initial={{ opacity: 0, scale: 0.8 }}
+												animate={{ opacity: 1, scale: 1 }}
+												transition={{ duration: 0.4, delay: 0.4 }}
+											>
+												<div className="text-xs font-bold uppercase tracking-widest opacity-60">Eval Points</div>
+												<div className="text-5xl font-black text-[#FFD700] drop-shadow-lg">
+													{user.correction_point}
+												</div>
+											</motion.div>
 
-									{/* Pool Year */}
-									<div className="bg-[#535353] text-white p-5 rounded-2xl flex flex-col aspect-square justify-between border-2 border-black group hover:scale-105 transition-transform">
-										<div className="text-xs font-bold uppercase tracking-widest opacity-80">Pool</div>
-										<div>
-											<div className="text-xl font-bold capitalize">{user.pool_month}</div>
-											<div className="text-4xl font-black">{user.pool_year}</div>
+											{/* Pool Year */}
+											<motion.div
+												className="bg-[#535353] text-white p-5 rounded-2xl flex flex-col aspect-square justify-between border-2 border-black group hover:scale-105 transition-transform"
+												initial={{ opacity: 0, scale: 0.8 }}
+												animate={{ opacity: 1, scale: 1 }}
+												transition={{ duration: 0.4, delay: 0.5 }}
+											>
+												<div className="text-xs font-bold uppercase tracking-widest opacity-80">Pool</div>
+												<div>
+													<div className="text-xl font-bold capitalize">{user.pool_month}</div>
+													<div className="text-4xl font-black">{user.pool_year}</div>
+												</div>
+											</motion.div>
 										</div>
-									</div>
-								</div>
 
-								<div className="bg-black/10 backdrop-blur-sm p-4 rounded-xl border-2 border-black/10 mt-2">
-									<div className="flex justify-between items-center">
-										<span className="font-bold text-sm uppercase">Current Level</span>
-										<span className="font-mono font-black text-2xl">
-											{activeCursus.level?.toFixed(2) || "0.00"}
-										</span>
-									</div>
-									<div className="w-full h-3 bg-white/50 rounded-full mt-2 overflow-hidden border border-black/10">
-										<div
-											className="h-full bg-black"
-											style={{ width: `${(activeCursus.level % 1) * 100}%` }}
-										/>
-									</div>
-								</div>
-							</div>
+										<motion.div
+											className="bg-black/10 backdrop-blur-sm p-4 rounded-xl border-2 border-black/10 mt-2"
+											initial={{ opacity: 0, y: 20 }}
+											animate={{ opacity: 1, y: 0 }}
+											transition={{ duration: 0.5, delay: 0.7 }}
+										>
+											<div className="flex justify-between items-center">
+												<span className="font-bold text-sm uppercase">Current Level</span>
+												<span className="font-mono font-black text-2xl">
+													{activeCursus.level?.toFixed(2) || "0.00"}
+												</span>
+											</div>
+											<div className="w-full h-3 bg-white/50 rounded-full mt-2 overflow-hidden border border-black/10">
+												<motion.div
+													className="h-full bg-black"
+													initial={{ width: 0 }}
+													animate={{ width: `${(activeCursus.level % 1) * 100}%` }}
+													transition={{ duration: 1, delay: 0.9 }}
+												/>
+											</div>
+										</motion.div>
+									</motion.div>
+								)}
+							</AnimatePresence>
 						</div>
 					)}
 					{/* Step 12: Final Summary Card - was Step 9/13 */}
 					{currentStep === 12 && (
-						<div className="w-full h-full bg-[#121212] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-500 relative overflow-hidden">
+						<div className="w-full h-full bg-[#121212] text-white flex flex-col items-center p-6 relative overflow-hidden">
 							<div
 								id="summary-card"
 								className="w-full h-full flex flex-col bg-gradient-to-br from-[#1e1e1e] to-[#000] rounded-2xl p-6 relative"
 							>
-								{/* Decorative Background */}
+								{/* Decorative Background - Always visible */}
 								<div className="absolute inset-0 z-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
 
-								{/* Header */}
-								<div className="relative z-10 flex items-center gap-4 mb-4">
-									<div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white shadow-lg shrink-0">
-										{user.image?.link ? (
-											<img src={user.image.link} alt={user.login} className="w-full h-full object-cover" />
-										) : (
-											<div className="w-full h-full bg-gray-900 flex items-center justify-center text-xl font-black">
-												{user.login?.[0]?.toUpperCase()}
+								<AnimatePresence>
+									{!showQuote && (
+										<motion.div
+											className="relative z-10 w-full h-full flex flex-col"
+											initial={{ opacity: 0, scale: 0.95 }}
+											animate={{ opacity: 1, scale: 1 }}
+											transition={{ duration: 0.8, ease: "easeOut" }}
+										>
+											{/* Header */}
+											<motion.div
+												className="flex items-center gap-4 mb-4"
+												initial={{ opacity: 0, y: -20 }}
+												animate={{ opacity: 1, y: 0 }}
+												transition={{ duration: 0.5, delay: 0.1 }}
+											>
+												<div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white shadow-lg shrink-0">
+													{user.image?.link ? (
+														<img src={user.image.link} alt={user.login} className="w-full h-full object-cover" />
+													) : (
+														<div className="w-full h-full bg-gray-900 flex items-center justify-center text-xl font-black">
+															{user.login?.[0]?.toUpperCase()}
+														</div>
+													)}
+												</div>
+												<div className="min-w-0">
+													<h2 className="text-2xl font-black tracking-tighter leading-none text-white truncate">
+														{user.displayname || user.login}
+													</h2>
+													<p className="font-mono text-xs opacity-60">@{user.login}</p>
+												</div>
+												<div className="ml-auto">
+													<div className="bg-[#FFE600] text-black font-black text-[10px] px-2 py-1 rounded rotate-3 shadow-[2px_2px_0px_white]">
+														#2025
+													</div>
+												</div>
+											</motion.div>
+
+											{/* VERDICT BANNER */}
+											<motion.div
+												className="w-full bg-gradient-to-r from-[#F1C40F] to-[#E67E22] text-black p-4 rounded-xl mb-4 shadow-lg transform hover:scale-[1.02] transition-transform"
+												initial={{ opacity: 0, x: -30 }}
+												animate={{ opacity: 1, x: 0 }}
+												transition={{ duration: 0.6, delay: 0.3 }}
+											>
+												<div className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-1">The Verdict</div>
+												<div className="text-2xl font-black leading-tight uppercase tracking-tight">
+													{personality}
+												</div>
+												<div className="text-xs font-bold opacity-80 mt-1 leading-tight">
+													{personalityDesc}
+												</div>
+												<div className="absolute right-2 top-2 opacity-20 text-4xl">👑</div>
+											</motion.div>
+
+											{/* Stats Grid */}
+											<div className="grid grid-cols-2 gap-3 flex-1 overflow-hidden">
+												<motion.div
+													className="bg-[#E91E63] p-3 rounded-xl text-white flex flex-col justify-between shadow-lg"
+													initial={{ opacity: 0, scale: 0.8 }}
+													animate={{ opacity: 1, scale: 1 }}
+													transition={{ duration: 0.4, delay: 0.5 }}
+												>
+													<div className="text-[10px] font-bold uppercase opacity-80">Projects</div>
+													<div>
+														<div className="text-3xl font-black">{totalProjects}</div>
+														<div className="text-[10px] leading-tight opacity-90 mt-0.5">
+															Best: {topProjects[0]?.final_mark || 0}%
+														</div>
+													</div>
+												</motion.div>
+
+												<motion.div
+													className="bg-[#4CAF50] p-3 rounded-xl text-white flex flex-col justify-between shadow-lg"
+													initial={{ opacity: 0, scale: 0.8 }}
+													animate={{ opacity: 1, scale: 1 }}
+													transition={{ duration: 0.4, delay: 0.6 }}
+												>
+													<div className="text-[10px] font-bold uppercase opacity-80">Log Hours</div>
+													<div>
+														<div className="text-3xl font-black">{Math.round(totalLogMinutes / 60)}h</div>
+														<div className="text-[10px] leading-tight opacity-90 mt-0.5">
+															Peak Day: {peakDayShort}
+														</div>
+													</div>
+												</motion.div>
+
+												<motion.div
+													className="bg-[#2196F3] p-3 rounded-xl text-white flex flex-col justify-between shadow-lg"
+													initial={{ opacity: 0, scale: 0.8 }}
+													animate={{ opacity: 1, scale: 1 }}
+													transition={{ duration: 0.4, delay: 0.7 }}
+												>
+													<div className="text-[10px] font-bold uppercase opacity-80">Quality</div>
+													<div>
+														<div className="text-3xl font-black">{outstandingCount}</div>
+														<div className="text-[10px] leading-tight opacity-90 mt-0.5">
+															Outstanding
+														</div>
+													</div>
+												</motion.div>
+
+												<motion.div
+													className="bg-[#9C27B0] p-3 rounded-xl text-white flex flex-col justify-between shadow-lg"
+													initial={{ opacity: 0, scale: 0.8 }}
+													animate={{ opacity: 1, scale: 1 }}
+													transition={{ duration: 0.4, delay: 0.8 }}
+												>
+													<div className="text-[10px] font-bold uppercase opacity-80">Skill Level</div>
+													<div>
+														<div className="text-3xl font-black">Lvl {activeCursus.level?.toFixed(1)}</div>
+														<div className="text-[10px] leading-tight opacity-90 mt-0.5">
+															Core Cursus
+														</div>
+													</div>
+												</motion.div>
 											</div>
-										)}
-									</div>
-									<div className="min-w-0">
-										<h2 className="text-2xl font-black tracking-tighter leading-none text-white truncate">
-											{user.displayname || user.login}
-										</h2>
-										<p className="font-mono text-xs opacity-60">@{user.login}</p>
-									</div>
-									<div className="ml-auto">
-										<div className="bg-[#FFE600] text-black font-black text-[10px] px-2 py-1 rounded rotate-3 shadow-[2px_2px_0px_white]">
-											#2025
-										</div>
-									</div>
-								</div>
 
-								{/* VERDICT BANNER (New) */}
-								<div className="relative z-10 w-full bg-gradient-to-r from-[#F1C40F] to-[#E67E22] text-black p-4 rounded-xl mb-4 shadow-lg transform hover:scale-[1.02] transition-transform">
-									<div className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-1">The Verdict</div>
-									<div className="text-2xl font-black leading-tight uppercase tracking-tight">
-										{personality}
-									</div>
-									<div className="text-xs font-bold opacity-80 mt-1 leading-tight">
-										{personalityDesc}
-									</div>
-									<div className="absolute right-2 top-2 opacity-20 text-4xl">👑</div>
-								</div>
-
-								{/* Stats Grid - Compacted */}
-								<div className="relative z-10 grid grid-cols-2 gap-3 flex-1 overflow-hidden">
-									{/* Top Projects */}
-									<div className="bg-[#E91E63] p-3 rounded-xl text-white flex flex-col justify-between shadow-lg">
-										<div className="text-[10px] font-bold uppercase opacity-80">Top Projects</div>
-										<div>
-											<div className="text-3xl font-black">{totalProjects}</div>
-											<div className="text-[10px] leading-tight opacity-90 mt-0.5">
-												Best: {topProjects[0]?.final_mark || 0}%
-											</div>
-										</div>
-									</div>
-
-									{/* Corrected Time Stats (Compact) */}
-									<div className="bg-[#3498DB] p-3 rounded-xl text-white flex flex-col justify-between shadow-lg">
-										<div className="text-[10px] font-bold uppercase opacity-80">Tracked</div>
-										<div>
-											<div className="text-xl font-black">{formatDuration(totalLogMinutes)}</div>
-											<div className="text-[10px] opacity-80 mt-1">
-												Avg {formatDuration(avgLogMinutes)}/day
-											</div>
-										</div>
-									</div>
-
-									{/* Skills */}
-									<div className="bg-[#9B59B6] p-3 rounded-xl text-white flex flex-col justify-between shadow-lg col-span-2">
-										<div className="flex justify-between items-center">
-											<div className="text-[10px] font-bold uppercase opacity-80">Top Skill</div>
-											<div className="text-[10px] font-bold bg-black/20 px-2 py-0.5 rounded">
-												Lvl {activeCursus.level?.toFixed(2)}
-											</div>
-										</div>
-										<div className="text-2xl font-black mt-1 truncate">{topSkills[0]?.name || "N/A"}</div>
-									</div>
-
-									{/* Achievements */}
-									<div className="bg-[#2ECC71] p-3 rounded-xl text-black flex flex-col justify-between shadow-lg">
-										<div className="text-[10px] font-bold uppercase opacity-70">Unlocks</div>
-										<div className="text-3xl font-black">{achievementsFiltered.length}</div>
-									</div>
-
-									{/* Peer Rating (Replaced Bonus) */}
-									<div className="bg-[#F1C40F] p-3 rounded-xl text-black flex flex-col justify-between shadow-lg">
-										<div className="text-[10px] font-bold uppercase opacity-70">Peer Rtg</div>
-										<div className="text-3xl font-black">{avgPeerRating} <span className="text-sm">★</span></div>
-									</div>
-								</div>
-
-								{/* Footer */}
-								<div className="relative z-10 mt-4 text-center">
-									<p className="text-[10px] font-mono opacity-50 mb-1 tracking-widest">42wrapped.up.railway.app</p>
-									<div className="font-black text-2xl tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-400 to-white opacity-20 uppercase">
-										42 Wrapped
-									</div>
-								</div>
+											{/* Footer Branding */}
+											<motion.div
+												className="mt-4 flex justify-between items-center opacity-40 grayscale"
+												initial={{ opacity: 0 }}
+												animate={{ opacity: 0.4 }}
+												transition={{ duration: 0.5, delay: 1.0 }}
+											>
+												<div className="font-black text-xl italic tracking-tighter">42 WRAPPED</div>
+												<div className="text-[8px] font-mono">intra.42.fr/wrapped/2025</div>
+											</motion.div>
+										</motion.div>
+									)}
+								</AnimatePresence>
 							</div>
 
-							{/* Download Button (Overlay) */}
-							<button
-								onClick={async () => {
-									const node = document.getElementById('summary-card');
-									if (node) {
-										try {
-											// Dynamic import to avoid SSR issues if any, though here it's client side
-											const { toPng } = await import('html-to-image');
-											const dataUrl = await toPng(node, { skipFonts: true });
-											const link = document.createElement('a');
-											link.download = `42wrapped-${user.login}-2025.png`;
-											link.href = dataUrl;
-											link.click();
-										} catch (err) {
-											console.error('Failed to download image', err);
-										}
-									}
-								}}
-								className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 bg-white text-black font-bold px-6 py-3 rounded-full flex items-center gap-2 shadow-xl hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+							{/* Actions (Screenshot/Share) */}
+							<motion.div
+								className="mt-6 flex gap-3 w-full"
+								initial={{ opacity: 0, y: 20 }}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ delay: 1.2 }}
 							>
-								<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-									<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-									<polyline points="7 10 12 15 17 10" />
-									<line x1="12" y1="15" x2="12" y2="3" />
-								</svg>
-								Save as Image
-							</button>
+								<button
+									onClick={async () => {
+										const node = document.getElementById('summary-card');
+										if (node) {
+											try {
+												const { toPng } = await import('html-to-image');
+												const dataUrl = await toPng(node, { skipFonts: true });
+												const link = document.createElement('a');
+												link.download = `42wrapped-${user.login}-2025.png`;
+												link.href = dataUrl;
+												link.click();
+											} catch (err) {
+												console.error('Failed to download image', err);
+											}
+										}
+									}}
+									className="flex-1 bg-white text-black font-black uppercase tracking-tighter py-4 rounded-xl shadow-[6px_6px_0px_#FFE600] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
+								>
+									Save as Image
+								</button>
+								<button
+									onClick={onClose}
+									className="bg-black/40 border-2 border-white/20 text-white font-black uppercase tracking-tighter p-4 rounded-xl"
+								>
+									Close
+								</button>
+							</motion.div>
 						</div>
 					)}
 				</div>
+
+				<MusicPlayerWidget />
 			</div>
 
-			<MusicPlayerWidget />
 		</div>
 	);
 }
