@@ -472,7 +472,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 			setShowQuote(true);
 			const timer = setTimeout(() => {
 				setShowQuote(false);
-			}, 800); // 0.8s - very snappy
+			}, 1720); // 1.72s - very snappy
 			return () => clearTimeout(timer);
 		} else {
 			setShowQuote(false);
@@ -1834,12 +1834,13 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 											{/* Footer Branding */}
 											<motion.div
-												className="mt-4 flex justify-between items-center"
+												className="mt-4 flex justify-between items-center flex-col"
 												initial={{ opacity: 0, y: 10 }}
 												animate={{ opacity: 0.5, y: 0 }}
 												transition={{ duration: 0.5, delay: 0.3 }}
 											>
 												<div className="font-black text-xl italic tracking-tighter bg-gradient-to-r from-white/60 to-white/30 bg-clip-text text-transparent">42wrapped.up.railway.app</div>
+												<div className="font-black text-sm bg-gradient-to-r from-white/60 to-white/30 text-transparent">By <a href="https://github.com/MossaJehad">Mossa Jehad</a></div>
 											</motion.div>
 										</motion.div>
 									)}
@@ -1886,7 +1887,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 											}
 										}
 									}}
-									className="cursor-pointer w-64 bg-white text-black font-black uppercase tracking-tighter py-4 rounded-xl shadow-[6px_6px_0px_#FFE600] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all relative overflow-hidden group"
+									className="cursor-pointer w-48 bg-white text-black font-black uppercase tracking-tighter py-4 rounded-xl shadow-[6px_6px_0px_#FFE600] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all relative overflow-hidden group"
 									whileHover={{ scale: 1.05 }}
 									whileTap={{ scale: 0.95 }}
 								>
