@@ -417,6 +417,38 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 		}
 	}, [currentStep]);
 
+	// Touch/Swipe Handlers for Mobile
+	const [touchStart, setTouchStart] = useState<number | null>(null);
+	const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+	const minSwipeDistance = 50;
+
+	const onTouchStart = useCallback((e: React.TouchEvent) => {
+		setTouchEnd(null);
+		setTouchStart(e.targetTouches[0].clientX);
+	}, []);
+
+	const onTouchMove = useCallback((e: React.TouchEvent) => {
+		setTouchEnd(e.targetTouches[0].clientX);
+	}, []);
+
+	const onTouchEnd = useCallback(() => {
+		if (!touchStart || !touchEnd) return;
+
+		const distance = touchStart - touchEnd;
+		const isLeftSwipe = distance > minSwipeDistance;
+		const isRightSwipe = distance < -minSwipeDistance;
+
+		if (isLeftSwipe) {
+			nextStep();
+		} else if (isRightSwipe) {
+			prevStep();
+		}
+
+		setTouchStart(null);
+		setTouchEnd(null);
+	}, [touchStart, touchEnd, nextStep, prevStep]);
+
 	// Auto-advance logic
 	useEffect(() => {
 		if (isPaused) return;
@@ -467,7 +499,12 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 			</button>
 
 			{/* Mobile-first container */}
-			<div className="relative w-full h-full md:w-[400px] md:h-[800px] md:rounded-2xl overflow-hidden bg-background shadow-2xl">
+			<div
+				className="relative w-full h-full md:w-[400px] md:h-[800px] md:rounded-2xl overflow-hidden bg-background shadow-2xl"
+				onTouchStart={onTouchStart}
+				onTouchMove={onTouchMove}
+				onTouchEnd={onTouchEnd}
+			>
 
 				{/* Progress Bars */}
 				<div className="absolute top-4 left-0 right-0 z-20 flex gap-1 px-2">
@@ -489,7 +526,12 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 				</div>
 
 				{/* Tap Areas for Navigation - Lower Z but pointer-events enabled */}
-				<div className="absolute inset-0 z-10 flex">
+				<div
+					className="absolute inset-0 z-10 flex"
+					onTouchStart={onTouchStart}
+					onTouchMove={onTouchMove}
+					onTouchEnd={onTouchEnd}
+				>
 					<div className="w-1/3 h-full cursor-pointer" onClick={prevStep} />
 					<div className="w-2/3 h-full cursor-pointer" onClick={nextStep} />
 				</div>
@@ -612,7 +654,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 							<AnimatePresence>
 								{!showQuote && (
 									<motion.div
-										className="relative z-10 w-full h-full flex flex-col"
+										className="relative my-20 z-10 w-full h-full flex flex-col"
 										initial={{ opacity: 0, x: -30 }}
 										animate={{ opacity: 1, x: 0 }}
 										transition={{ duration: 0.6, ease: "easeOut" }}
@@ -709,7 +751,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 							<AnimatePresence>
 								{!showQuote && (
 									<motion.div
-										className="relative z-10 w-full h-full flex flex-col"
+										className="relative my-20 z-10 w-full h-full flex flex-col"
 										initial={{ opacity: 0, y: 20 }}
 										animate={{ opacity: 1, y: 0 }}
 										transition={{ duration: 0.6, ease: "easeOut" }}
@@ -945,7 +987,6 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 					)}
 
 					{/* Step 5: The Rhythm (Weekly Activity) */}
-					{/* Step 5: The Rhythm (Weekly Activity) */}
 					{currentStep === 5 && (
 						<div className="w-full h-full bg-[#8E44AD] text-white flex flex-col items-center p-6 relative overflow-hidden pointer-events-auto">
 							{/* Background - Always visible */}
@@ -954,7 +995,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 							<AnimatePresence>
 								{!showQuote && (
 									<motion.div
-										className="relative z-10 w-full h-full flex flex-col justify-center mt-10"
+										className="relative my-20 z-10 w-full h-full flex flex-col justify-center"
 										initial={{ opacity: 0, y: 30 }}
 										animate={{ opacity: 1, y: 0 }}
 										transition={{ duration: 0.6, ease: "easeOut" }}
@@ -1002,7 +1043,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 											</motion.div>
 
 											{/* Bar Chart */}
-											<div className="w-full h-40 flex items-end justify-between gap-2 px-4 pb-4">
+											<div className="w-full h-40 flex items-end justify-between gap-2 px-4 pb-4 my-20">
 												{dayCounts.map((minutes, idx) => {
 													const heightPercent = Math.max((minutes / maxWeeklyMinutes) * 100, 10);
 													const isPeak = idx === peakDayIndex;
@@ -1050,13 +1091,13 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 							<AnimatePresence>
 								{!showQuote && (
 									<motion.div
-										className="relative z-10 w-full h-full flex flex-col pt-12"
+										className="relative my-20 z-10 w-full h-full flex flex-col pt-12"
 										initial={{ opacity: 0, x: -30 }}
 										animate={{ opacity: 1, x: 0 }}
 										transition={{ duration: 0.6, ease: "easeOut" }}
 									>
 										<motion.h2
-											className="text-5xl font-black uppercase tracking-tighter mb-8 text-left leading-[0.85]"
+											className="text-5xl font-black uppercase tracking-tighter text-left leading-[0.85] mb-4"
 											initial={{ opacity: 0, scale: 0.9 }}
 											animate={{ opacity: 1, scale: 1 }}
 											transition={{ duration: 0.5, delay: 0.1 }}
@@ -1077,7 +1118,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 														<div className="font-bold text-xl mb-1">
 															{team.name || `Team #${team.id}`}
 														</div>
-														<div className="flex -space-x-2 overflow-hidden mt-3">
+														<div className="flex -space-x-2 overflow-hidden">
 															{team.users?.map((u: any, uIdx: number) => (
 																<motion.div
 																	key={u.id}
@@ -1122,7 +1163,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 										</div>
 
 										<motion.div
-											className="mt-4 pt-4 border-t border-white/20 text-center"
+											className="pt-4 border-t border-white/20 text-center"
 											initial={{ opacity: 0, y: 20 }}
 											animate={{ opacity: 1, y: 0 }}
 											transition={{ duration: 0.5, delay: 0.8 }}
@@ -1405,7 +1446,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 										transition={{ duration: 0.6 }}
 									>
 										<motion.h2
-											className="text-5xl font-black uppercase tracking-tighter mb-8 text-center leading-none drop-shadow-[0_4px_0_rgba(0,0,0,1)]"
+											className="text-5xl font-black uppercase tracking-tighter mb-4 text-center leading-none drop-shadow-[0_4px_0_rgba(0,0,0,1)]"
 											initial={{ opacity: 0, y: -20 }}
 											animate={{ opacity: 1, y: 0 }}
 											transition={{ duration: 0.5, delay: 0.1 }}
@@ -1413,8 +1454,6 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 											Peer<br />
 											<span className="text-[#e0aaff]">Review</span>
 										</motion.h2>
-
-
 
 										{/* Top Evaluators List */}
 										<div className="w-full">
@@ -1453,12 +1492,12 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 										{/* Nicest Feedback */}
 										{nicestFeedback && (
 											<motion.div
-												className="bg-[#240046]/50 p-4 rounded-xl border border-[#e0aaff]/30 backdrop-blur-sm relative mt-auto max-h-[120px] overflow-hidden"
+												className="bg-[#240046]/50 p-4 rounded-xl border border-[#e0aaff]/30 backdrop-blur-sm relative mt-20 max-h-[120px] overflow-hidden"
 												initial={{ opacity: 0, y: 30 }}
 												animate={{ opacity: 1, y: 0 }}
 												transition={{ duration: 0.5, delay: 0.8 }}
 											>
-												<div className="absolute -top-3 -right-2 text-2xl rotate-12 animate-pulse">❤️</div>
+												<div className="absolute top-2 right-2 text-2xl rotate-10 animate-pulse opacity-70">✨</div>
 												<p className="text-[10px] font-bold text-[#e0aaff] uppercase mb-1">Highlight</p>
 												<p className="text-xs italic leading-relaxed opacity-90 line-clamp-3">"{nicestFeedback.feedback}"</p>
 											</motion.div>
