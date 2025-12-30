@@ -1091,7 +1091,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 							<AnimatePresence>
 								{!showQuote && (
 									<motion.div
-										className="relative my-20 z-10 w-full h-full flex flex-col pt-12"
+										className="relative my-20 z-10 w-full h-full flex flex-col"
 										initial={{ opacity: 0, x: -30 }}
 										animate={{ opacity: 1, x: 0 }}
 										transition={{ duration: 0.6, ease: "easeOut" }}
@@ -1105,12 +1105,12 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 											Dream<br /><span className="text-black bg-white px-2">Team</span>
 										</motion.h2>
 
-										<div className="flex-1 overflow-y-auto w-full no-scrollbar space-y-4 pb-12">
+										<div className="flex-1 overflow-y-auto w-full no-scrollbar space-y-4 pb-4">
 											{groupTeams.length > 0 ? (
 												groupTeams.map((team: any, idx: number) => (
 													<motion.div
 														key={team.id}
-														className="bg-black/20 p-4 rounded-xl border-l-4 border-white backdrop-blur-sm hover:bg-black/30 transition-colors"
+														className="bg-black/20 p-3 rounded-xl border-l-4 border-white backdrop-blur-sm hover:bg-black/30 transition-colors"
 														initial={{ opacity: 0, y: 20 }}
 														animate={{ opacity: 1, y: 0 }}
 														transition={{ duration: 0.4, delay: 0.2 + idx * 0.1 }}
