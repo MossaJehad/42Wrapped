@@ -43,7 +43,7 @@ function App() {
 				setError(null);
 
 				// Start timer for minimum loading duration (show at least a few messages)
-				const minLoadingTime = new Promise(resolve => setTimeout(resolve, 4400));
+				const minLoadingTime = new Promise(resolve => setTimeout(resolve, 7200));
 
 				try {
 					// Exchange code for token
@@ -110,8 +110,8 @@ function App() {
 						console.error("Failed to fetch teams", teamError);
 					}
 
-				// Wait for minimum loading time before finishing
-				await minLoadingTime;
+					// Wait for minimum loading time before finishing
+					await minLoadingTime;
 
 					// Clear query params
 					navigate({ to: '/', search: () => ({ code: undefined }), replace: true });
@@ -133,7 +133,7 @@ function App() {
 		if (!loading) return;
 		const interval = setInterval(() => {
 			setLoadingMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
-		}, 7200); // 7.2s per message for nice cycling
+		}, 1000); // 1s per message
 		return () => clearInterval(interval);
 	}, [loading]);
 
