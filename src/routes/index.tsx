@@ -144,8 +144,8 @@ function App() {
 		// scope: 'public' // Add scopes if needed
 	});
 
-	// If user is logged in, show the Story Mode
-	if (user) {
+	// If user is logged in and loading is finished, show the Story Mode
+	if (user && !loading) {
 		return <StoryMode user={user} achievements={achievements} locations={locations} evaluations={evaluations} teams={teams} />;
 	}
 
