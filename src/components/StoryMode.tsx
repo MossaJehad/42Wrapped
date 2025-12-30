@@ -1840,7 +1840,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 												transition={{ duration: 0.5, delay: 0.3 }}
 											>
 												<div className="font-black text-xl italic tracking-tighter bg-gradient-to-r from-white/60 to-white/30 bg-clip-text text-transparent">42wrapped.up.railway.app</div>
-												<div className="font-black text-sm bg-gradient-to-r from-white/60 to-white/30 text-transparent">By <a href="https://github.com/MossaJehad">Mossa Jehad</a></div>
+												<div className="font-black text-l tracking-tighter bg-gradient-to-r from-white/60 to-white/30 bg-clip-text text-transparent">By <a href="https://github.com/MossaJehad">Mossa Jehad</a></div>
 											</motion.div>
 										</motion.div>
 									)}
