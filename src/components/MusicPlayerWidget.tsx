@@ -8,7 +8,11 @@ const GENRE_FILES: Record<string, string> = {
 	'Chill Lofi': '/music/chill-lofi.mp3',
 };
 
-export function MusicPlayerWidget() {
+interface MusicPlayerWidgetProps {
+	isPaused?: boolean;
+}
+
+export function MusicPlayerWidget({ isPaused: externalPaused = false }: MusicPlayerWidgetProps) {
 	const [isOpen, setIsOpen] = useState(true);
 	const [currentGenre, setCurrentGenre] = useState('Techno House');
 	const [isMuted, setIsMuted] = useState(false);
@@ -59,12 +63,24 @@ export function MusicPlayerWidget() {
 		}
 	}, [isMuted]);
 
+	// Handle external pause/play control
+	useEffect(() => {
+		if (!audioRef.current) return;
+
+		if (externalPaused) {
+			audioRef.current.pause();
+		} else {
+			audioRef.current.play().catch(e => console.log("Could not resume audio", e));
+		}
+	}, [externalPaused]);
+
 	const genres = Object.keys(GENRE_FILES);
 
 	return (
 		<div className={cn(
-			"fixed bottom-6 left-6 z-[100] w-72 bg-[#000000] text-white rounded-xl overflow-hidden border border-white/10 font-sans shadow-2xl transition-all duration-300 ease-out",
-			isOpen ? "h-auto" : "h-[52px]" // Collapsed height
+			"fixed bottom-6 left-6 z-[100] bg-[#000000] text-white rounded-xl overflow-hidden border border-white/10 font-sans shadow-2xl transition-all duration-300 ease-out",
+			// Mobile: square when closed, full when open. Larger screens: always full width
+			isOpen ? "w-72 h-auto" : "w-[52px] h-[52px] sm:w-72 sm:h-[52px]"
 		)}>
 			{/* Header */}
 			<div
@@ -73,13 +89,21 @@ export function MusicPlayerWidget() {
 			>
 				<div className="flex items-center gap-2.5">
 					<Music size={18} className="text-white/80" />
-					<span className="font-bold text-sm tracking-wide">Music Player</span>
+					<span className={cn(
+						"font-bold text-sm tracking-wide",
+						isOpen ? "inline" : "hidden sm:inline"
+					)}>Music Player</span>
 				</div>
-				{isOpen ? <ChevronDown size={18} className="text-white/60" /> : <ChevronUp size={18} className="text-white/60" />}
+				<div className={cn(isOpen ? "block" : "hidden sm:block")}>
+					{isOpen ? <ChevronDown size={18} className="text-white/60" /> : <ChevronUp size={18} className="text-white/60" />}
+				</div>
 			</div>
 
-			{/* List */}
-			<div className="p-2 flex flex-col gap-1 bg-[#000000]">
+			{/* List - Show when open */}
+			<div className={cn(
+				"p-2 flex-col gap-1 bg-[#000000]",
+				isOpen ? "flex" : "hidden"
+			)}>
 				{genres.map((genre) => (
 					<button
 						key={genre}
@@ -96,8 +120,11 @@ export function MusicPlayerWidget() {
 				))}
 			</div>
 
-			{/* Footer */}
-			<div className="px-4 py-3 mb-1 flex items-center justify-between text-xs">
+			{/* Footer - Show when open */}
+			<div className={cn(
+				"px-4 py-3 mb-1 items-center justify-between text-xs",
+				isOpen ? "flex" : "hidden"
+			)}>
 				<div className="text-white/40 font-medium">
 					Now Playing: <span className="text-white/80 ml-1">{currentGenre}</span>
 				</div>

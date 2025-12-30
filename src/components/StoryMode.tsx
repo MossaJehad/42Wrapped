@@ -1638,21 +1638,20 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 											{/* VERDICT BANNER */}
 											<motion.div
-												className="w-full bg-gradient-to-r from-[#F1C40F] to-[#E67E22] text-black p-4 rounded-xl mb-4 shadow-lg transform hover:scale-[1.02] transition-transform"
-												initial={{ opacity: 0, x: -30 }}
-												animate={{ opacity: 1, x: 0 }}
-												transition={{ duration: 0.6, delay: 0.3 }}
-											>
-												<div className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-1">The Verdict</div>
-												<div className="text-2xl font-black leading-tight uppercase tracking-tight">
-													{personality}
-												</div>
-												<div className="text-xs font-bold opacity-80 mt-1 leading-tight">
-													{personalityDesc}
-												</div>
-												<div className="absolute right-2 top-2 opacity-20 text-4xl">👑</div>
+														className="relative w-full bg-gradient-to-r from-[#F1C40F] to-[#E67E22] text-black p-4 rounded-xl mb-4 shadow-lg transform hover:scale-[1.02] transition-transform overflow-hidden"
+														initial={{ opacity: 0, x: -30 }}
+														animate={{ opacity: 1, x: 0 }}
+														transition={{ duration: 0.6, delay: 0.3 }}
+													>
+														<div className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-1">The Verdict</div>
+														<div className="text-2xl font-black leading-tight uppercase tracking-tight">
+															{personality}
+														</div>
+														<div className="text-xs font-bold opacity-80 mt-1 leading-tight">
+															{personalityDesc}
+														</div>
+														<div className="absolute right-2 top-2 opacity-20 text-4xl pointer-events-none">👑</div>
 											</motion.div>
-
 											{/* Stats Grid */}
 											<div className="grid grid-cols-2 gap-3 flex-1 overflow-hidden">
 												<motion.div
@@ -1723,8 +1722,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 												animate={{ opacity: 0.4 }}
 												transition={{ duration: 0.5, delay: 1.0 }}
 											>
-												<div className="font-black text-xl italic tracking-tighter">42 WRAPPED</div>
-												<div className="text-[8px] font-mono">intra.42.fr/wrapped/2025</div>
+												<div className="font-black text-xl italic tracking-tighter">42wrapped.up.railway.app</div>
 											</motion.div>
 										</motion.div>
 									)}
@@ -1779,7 +1777,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 						</div>
 					)}
 				</div>
-				<MusicPlayerWidget />
+				<MusicPlayerWidget isPaused={isPaused} />
 			</div>
 		</div>
 	);
