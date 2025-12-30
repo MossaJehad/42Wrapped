@@ -1,3 +1,3 @@
 export const serverConfig = {
-	clientSecret: "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",
+	clientSecret: "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",
 };
