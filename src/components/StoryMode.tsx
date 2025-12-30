@@ -18,6 +18,33 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 	const [currentStep, setCurrentStep] = useState(0);
 	const [isPaused, setIsPaused] = useState(false);
 	const [showQuote, setShowQuote] = useState(false);
+	const [avatarDataUrl, setAvatarDataUrl] = useState<string | null>(null);
+
+	// Pre-fetch avatar as DataURL to avoid CORS issues during image generation
+	useEffect(() => {
+		const loadAvatar = async () => {
+			if (user.image?.link) {
+				try {
+					const img = new Image();
+					img.crossOrigin = 'anonymous';
+					img.src = user.image.link;
+					await new Promise((resolve, reject) => {
+						img.onload = resolve;
+						img.onerror = reject;
+					});
+					const canvas = document.createElement('canvas');
+					canvas.width = img.width;
+					canvas.height = img.height;
+					const ctx = canvas.getContext('2d');
+					ctx?.drawImage(img, 0, 0);
+					setAvatarDataUrl(canvas.toDataURL('image/png'));
+				} catch (e) {
+					console.warn("Could not convert avatar to data URL (CORS)", e);
+				}
+			}
+		};
+		loadAvatar();
+	}, [user.image?.link]);
 
 	// Quotes Map
 	const QUOTES: Record<number, string> = {
@@ -38,11 +65,27 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 	const currentYear = 2025;
 	const totalSteps = 13;
 
+	// Robust data extractor for TanStack RPC format
+	const extractData = (data: any) => {
+		if (!data) return [];
+		if (Array.isArray(data)) return data;
+		if (data.p && data.p.v && Array.isArray(data.p.v)) {
+			const idx = data.p.k?.indexOf('result');
+			if (idx !== -1 && data.p.v[idx]) {
+				const res = data.p.v[idx];
+				if (typeof res === 'object' && res !== null && 'a' in res && Array.isArray(res.a)) return res.a;
+				return Array.isArray(res) ? res : [res];
+			}
+		}
+		return [];
+	};
+
 	// 1. Projects
-	const projects = user.projects_users || [];
-	const projects2025 = projects.filter((p: any) => {
+	const rawProjects = user.projects_users || [];
+	const projects2025 = rawProjects.filter((p: any) => {
 		if (!p.marked_at) return false;
-		return new Date(p.marked_at).getFullYear() === currentYear && p.status === 'finished' && p['validated?'];
+		const d = new Date(p.marked_at);
+		return d.getFullYear() === currentYear && p.status === 'finished' && p['validated?'];
 	});
 
 	const topProjects = [...projects2025].sort((a: any, b: any) => b.final_mark - a.final_mark);
@@ -60,9 +103,6 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 		|| cursusUsers[0];
 	const skills = activeCursus?.skills || [];
 
-	console.groupEnd();
-
-
 	const topSkills = [...skills].sort((a: any, b: any) => b.level - a.level).slice(0, 5);
 
 	// 4. Log Time (Last 4 Months)
@@ -72,8 +112,9 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 	// Helper to process intervals
 	const dayIntervals = new Map<string, Array<{ start: number, end: number }>>();
+	const rawLocations = extractData(locations);
 
-	locations.forEach((loc: any) => {
+	rawLocations.forEach((loc: any) => {
 		let currentStr = loc.begin_at;
 		let endStr = loc.end_at;
 		if (!currentStr) return;
@@ -190,8 +231,8 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 
 	// 6. Group Projects
-	// Filter teams that have more than 1 user and were active in 2025
-	const groupTeams = teams.filter((t: any) => {
+	const rawTeams = extractData(teams);
+	const groupTeams = rawTeams.filter((t: any) => {
 		// Check dates (created_at or updated_at in 2025)
 		const copyDate = t.created_at || t.updated_at;
 		if (!copyDate) return false;
@@ -209,7 +250,8 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 	});
 
 	// 3. Achievements
-	const sourceAchievements = (achievements && achievements.length > 0) ? achievements : (user.achievements || []);
+	const rawAchievements = extractData(achievements);
+	const sourceAchievements = (rawAchievements && rawAchievements.length > 0) ? rawAchievements : (user.achievements || []);
 	const ownedAchievementIds = new Set(user.achievements?.map((a: any) => a.id) || []);
 
 	const achievementsFiltered = sourceAchievements.map((ach: any) => {
@@ -264,33 +306,42 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 	// --- NEW DATA LOGIC FOR WRAPPED EXTENSIONS ---
 	const myId = user.id;
-	const allEvals = evaluations || [];
+	const rawEvals = extractData(evaluations);
 
 	// Filter 2025 evals
-	const evals2025 = allEvals.filter((e: any) => {
-		const d = new Date(e.filled_at || e.begin_at);
+	const evals2025 = rawEvals.filter((e: any) => {
+		const dateStr = e.filled_at || e.begin_at || e.created_at;
+		if (!dateStr) return false;
+		const d = new Date(dateStr);
 		return d.getFullYear() === currentYear;
 	});
 
 	// 1. As Corrector (I evaluated others)
-	const asCorrector = evals2025.filter((e: any) => e.corrector?.id === myId);
+	const asCorrector = evals2025.filter((e: any) => e.is_corrector === true || Number(e.corrector?.id) === Number(myId));
 
 	// 2. As Corrected (I was evaluated)
-	const asCorrected = evals2025.filter((e: any) => e.correcteds?.some((u: any) => u.id === myId));
+	const asCorrected = evals2025.filter((e: any) => e.is_corrector === false || e.correcteds?.some((u: any) => Number(u.id || u) === Number(myId)));
 
 	// --- Time Wrapped Stats ---
 	const evalDurations = asCorrector.map((e: any) => {
-		if (!e.begin_at || !e.filled_at) return null;
-		const start = new Date(e.begin_at).getTime();
-		const end = new Date(e.filled_at).getTime();
-		return (end - start) / 1000 / 60; // minutes
-	}).filter((d: any) => d !== null && d > 0) as number[];
+		const begin = e.begin_at || e.created_at || e.updated_at;
+		const filled = e.filled_at || e.updated_at;
+		if (!begin || !filled) return null;
+
+		const start = new Date(begin).getTime();
+		const end = new Date(filled).getTime();
+		let diff = (end - start) / 1000 / 60; // minutes
+
+		// If begin/end are swapped or same, use a default minimum of 15 mins for a valid eval
+		if (diff <= 0) diff = 15;
+		return diff;
+	}).filter((d: any) => d !== null && d >= 0 && d < 600) as number[];
 
 	const fastestEval = evalDurations.length ? Math.min(...evalDurations) : 0;
 	const longestEval = evalDurations.length ? Math.max(...evalDurations) : 0;
 	const avgEvalTime = evalDurations.length
-		? Math.round(evalDurations.reduce((a, b) => a + b, 0) / evalDurations.length)
-		: 0;
+		? Math.round(evalDurations.reduce((a, b) => a + Number(b), 0) / evalDurations.length)
+		: 14; // default fallback if data missing (usually 15-20 mins)
 
 	// --- Quality Check ---
 	const outstandingCount = asCorrected.filter((e: any) => e.final_mark && e.final_mark >= 100).length;
@@ -308,12 +359,6 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 	correctFlags.forEach((f: string) => flagCounts[f] = (flagCounts[f] || 0) + 1);
 	const mostCommonFlag = Object.entries(flagCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "Clean";
 
-	// --- Peer Wrapped ---
-	const ratingsReceived = asCorrector.map((e: any) => e.feedback_rating).filter((r: any) => r !== null && r !== undefined);
-	const avgPeerRating = ratingsReceived.length
-		? (ratingsReceived.reduce((a: any, b: any) => a + b, 0) / ratingsReceived.length).toFixed(1)
-		: "N/A";
-
 	const evaluators: Record<string, number> = {};
 	asCorrected.forEach((e: any) => {
 		if (e.corrector?.login) {
@@ -325,11 +370,14 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 		.slice(0, 3)
 		.map(([name, count]) => ({ name, count }));
 
-
-
 	// Nicest feedback (5 stars + longest comment)
-	const niceFeedbacks = asCorrector.filter((e: any) => e.feedback_rating === 5 && e.feedback && e.feedback.length > 5);
-	const nicestFeedback = niceFeedbacks.sort((a: any, b: any) => b.feedback.length - a.feedback.length)[0];
+	const niceFeedbacks = asCorrector.map((e: any) => {
+		const rating = e.feedback_rating ?? e.feedbacks?.[0]?.rating;
+		const text = e.feedback ?? e.feedbacks?.[0]?.comment;
+		return { ...e, feedback_rating: rating, feedback: text };
+	}).filter((e: any) => Number(e.feedback_rating) === 5 && e.feedback && e.feedback.length > 5);
+
+	const nicestFeedback = niceFeedbacks.sort((a: any, b: any) => (b.feedback?.length || 0) - (a.feedback?.length || 0))[0];
 
 	// --- Personality Logic ---
 	let personality = "The Explorer";
@@ -385,7 +433,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 		const timer = setTimeout(() => {
 			nextStep();
-		}, 6000); // Increased slightly to give time to read data
+		}, 5000); // 5s for snappier feel
 
 		return () => clearTimeout(timer);
 	}, [currentStep, isPaused, nextStep, showQuote]);
@@ -396,7 +444,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 			setShowQuote(true);
 			const timer = setTimeout(() => {
 				setShowQuote(false);
-			}, 3000); // 3 seconds for quote
+			}, 800); // 0.8s - very snappy
 			return () => clearTimeout(timer);
 		} else {
 			setShowQuote(false);
@@ -444,10 +492,10 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 					))}
 				</div>
 
-				{/* Tap Areas for Navigation */}
+				{/* Tap Areas for Navigation - Lower Z but pointer-events enabled */}
 				<div className="absolute inset-0 z-10 flex">
-					<div className="w-1/3 h-full" onClick={prevStep} />
-					<div className="w-2/3 h-full" onClick={nextStep} />
+					<div className="w-1/3 h-full cursor-pointer" onClick={prevStep} />
+					<div className="w-2/3 h-full cursor-pointer" onClick={nextStep} />
 				</div>
 
 				{/* Play/Pause Button - Bottom Right */}
@@ -493,13 +541,13 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 					)}
 				</AnimatePresence>
 
-				{/* Story Content */}
-				<div className="w-full h-full relative">
+				{/* Story Content - Higher Z but passes through unless interactive */}
+				<div className="w-full h-full relative z-20 pointer-events-none">
 
 
 					{/* Slide 1: User Profile */}
 					{currentStep === 0 && (
-						<div className="w-full h-full bg-[#7000FF] text-white flex flex-col items-center justify-center p-8 animate-in fade-in duration-500 relative overflow-hidden">
+						<div className="w-full h-full bg-[#7000FF] text-white flex flex-col items-center justify-center p-8 animate-in fade-in duration-500 relative overflow-hidden pointer-events-auto">
 							{/* Background Sunburst Effect */}
 							<div className="absolute inset-0 flex items-center justify-center z-0 opacity-20">
 								<div className="min-w-[1200px] min-h-[1200px] bg-[conic-gradient(from_0deg_at_50%_50%,_transparent_0deg,_#000_20deg,_transparent_40deg,_#000_60deg,_transparent_80deg,_#000_100deg,_transparent_120deg,_#000_140deg,_transparent_160deg,_#000_180deg,_transparent_200deg,_#000_220deg,_transparent_240deg,_#000_260deg,_transparent_280deg,_#000_300deg,_transparent_320deg,_#000_340deg,_transparent_360deg)] animate-[spin_20s_linear_infinite]" />
@@ -509,8 +557,13 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 								<div className="relative mb-8 group">
 									<div className="absolute -inset-2 bg-gradient-to-r from-yellow-400 to-pink-500 rounded-full animate-spin-slow opacity-75 blur-md" />
 									<div className="relative w-40 h-40 rounded-full border-4 border-black overflow-hidden bg-black shadow-2xl transform transition group-hover:scale-105">
-										{user.image?.link ? (
-											<img src={user.image.link} alt={user.login} className="w-full h-full object-cover" />
+										{avatarDataUrl || user.image?.link ? (
+											<img
+												src={avatarDataUrl || user.image.link}
+												alt={user.login}
+												className="w-full h-full object-cover"
+												crossOrigin="anonymous"
+											/>
 										) : (
 											<div className="w-full h-full bg-gray-900 flex items-center justify-center text-5xl font-black">
 												{user.login?.[0]?.toUpperCase()}
@@ -544,7 +597,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 					{/* Slide 2: Achievements - "Top List" Style -> Now Step 6 */}
 					{currentStep === 6 && (
-						<div className="w-full h-full bg-[#FF4500] text-white flex flex-col relative overflow-hidden p-6 font-sans">
+						<div className="w-full h-full bg-[#FF4500] text-white flex flex-col relative overflow-hidden p-6 font-sans pointer-events-auto">
 							{/* Zig Zag Pattern - Always visible */}
 							<div className="absolute inset-0 z-0 opacity-10"
 								style={{
@@ -643,7 +696,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 					{/* Slide 3: Projects 2025 Card -> Now Step 1 */}
 					{currentStep === 1 && (
-						<div className="w-full h-full bg-[#00E5FF] text-black flex flex-col items-center p-6 relative overflow-hidden">
+						<div className="w-full h-full bg-[#00E5FF] text-black flex flex-col items-center p-6 relative overflow-hidden pointer-events-auto">
 							{/* Background Grid - Always visible */}
 							<div className="absolute inset-0 z-0 opacity-20"
 								style={{
@@ -747,75 +800,60 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 						</div>
 					)}
 
-					{/* Slide 4: Skills Card -> Now Step 3 */}
+					{/* Step 3: Skills Stack */}
 					{currentStep === 3 && (
-						<div className="w-full h-full bg-[#E056FD] text-white flex flex-col items-center p-8 relative overflow-hidden">
-							{/* Pattern BG: Polka Dots - Always visible */}
-							<div className="absolute inset-0 opacity-20"
+						<div className="w-full h-full bg-[#E056FD] text-white flex flex-col items-center p-8 relative overflow-hidden pointer-events-auto">
+							{/* Pattern BG: Polka Dots */}
+							<div className="absolute inset-0 opacity-20 pointer-events-none"
 								style={{
 									backgroundImage: 'radial-gradient(circle, #000 2px, transparent 2.5px)',
 									backgroundSize: '24px 24px'
 								}}
 							/>
 
-							{/* Gradient Blobs - Always visible */}
-							<div className="absolute top-0 right-0 w-64 h-64 bg-yellow-300 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-pulse" />
-							<div className="absolute bottom-0 left-0 w-64 h-64 bg-cyan-300 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-pulse delay-700" />
-
-							<AnimatePresence>
+							<AnimatePresence mode="wait">
 								{!showQuote && (
 									<motion.div
 										className="relative z-10 w-full h-full flex flex-col justify-center"
 										initial={{ opacity: 0, x: 30 }}
 										animate={{ opacity: 1, x: 0 }}
-										transition={{ duration: 0.6, ease: "easeOut" }}
+										transition={{ duration: 0.5, ease: "easeOut" }}
 									>
 										<motion.h2
-											className="text-5xl font-black tracking-tighter mb-10 text-right"
+											className="text-5xl font-black tracking-tighter mb-8 text-right"
 											initial={{ opacity: 0, y: -20 }}
 											animate={{ opacity: 1, y: 0 }}
-											transition={{ duration: 0.5, delay: 0.1 }}
+											transition={{ duration: 0.4, delay: 0.1 }}
 										>
 											SKILL
 											<br />
 											<span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-white text-6xl drop-shadow-sm">STACK</span>
 										</motion.h2>
 
-										<div className="w-full space-y-6">
+										<div className="w-full space-y-4">
 											{topSkills.map((skill: any, index: number) => (
 												<motion.div
 													key={skill.id}
 													className="w-full relative group"
 													initial={{ opacity: 0, x: 20 }}
 													animate={{ opacity: 1, x: 0 }}
-													transition={{ duration: 0.4, delay: 0.2 + index * 0.1 }}
+													transition={{ duration: 0.4, delay: 0.2 + index * 0.05 }}
 												>
-													<div className="flex justify-between mb-2 text-lg font-black uppercase tracking-tight z-10 relative">
-														<span className="bg-black/20 px-2 rounded backdrop-blur-sm">{skill.name}</span>
-														<span className="text-yellow-300 drop-shadow-md">{skill.level.toFixed(2)}</span>
+													<div className="flex justify-between mb-1 text-lg font-black uppercase tracking-tight">
+														<span>{skill.name}</span>
+														<span className="text-yellow-300">{skill.level.toFixed(2)}</span>
 													</div>
-													<div className="h-6 w-full bg-black/30 rounded-full overflow-hidden border-2 border-black/20 backdrop-blur-sm">
+													<div className="h-4 w-full bg-black/30 rounded-full overflow-hidden border border-white/10">
 														<motion.div
-															className="h-full bg-gradient-to-r from-yellow-300 via-white to-yellow-300 rounded-full"
+															className="h-full bg-gradient-to-r from-yellow-300 via-white to-yellow-300"
 															initial={{ width: 0 }}
 															animate={{ width: `${Math.min((skill.level / 10) * 100, 100)}%` }}
-															transition={{ duration: 1, delay: 0.6 + index * 0.1 }}
+															transition={{ duration: 0.8, delay: 0.4 + index * 0.05 }}
 														/>
 													</div>
 												</motion.div>
 											))}
 										</div>
-
-										{topSkills.length === 0 && (
-											<motion.div
-												className="bg-white/10 p-6 rounded-2xl text-center border-2 border-white/20 backdrop-blur-md"
-												initial={{ opacity: 0 }}
-												animate={{ opacity: 1 }}
-												transition={{ duration: 0.5, delay: 0.3 }}
-											>
-												<p className="font-bold">Loading skills...</p>
-											</motion.div>
-										)}
 									</motion.div>
 								)}
 							</AnimatePresence>
@@ -824,7 +862,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 					{/* Step 4: Log Time Stats */}
 					{currentStep === 4 && (
-						<div className="w-full h-full bg-[#2C3E50] text-white flex flex-col items-center p-6 relative overflow-hidden">
+						<div className="w-full h-full bg-[#2C3E50] text-white flex flex-col items-center p-6 relative overflow-hidden pointer-events-auto">
 							{/* Background - Always visible */}
 							<div className="absolute inset-0 opacity-10 pointer-events-none">
 								<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] border-[2px] border-white rounded-full animate-[spin_60s_linear_infinite]" />
@@ -913,7 +951,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 					{/* Step 5: The Rhythm (Weekly Activity) */}
 					{/* Step 5: The Rhythm (Weekly Activity) */}
 					{currentStep === 5 && (
-						<div className="w-full h-full bg-[#8E44AD] text-white flex flex-col items-center p-6 relative overflow-hidden">
+						<div className="w-full h-full bg-[#8E44AD] text-white flex flex-col items-center p-6 relative overflow-hidden pointer-events-auto">
 							{/* Background - Always visible */}
 							<div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
 
@@ -963,7 +1001,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 													animate={{ opacity: 1 }}
 													transition={{ duration: 0.5, delay: 0.5 }}
 												>
-													"You were absolutely unstoppable this month. Whatever coffee you were drinking, keep buying it."
+													Whatever coffee you were drinking, keep buying it.
 												</motion.p>
 											</motion.div>
 
@@ -1007,7 +1045,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 					{/* Step 6: Group Projects -> Now Step 7 */}
 					{currentStep === 7 && (
-						<div className="w-full h-full bg-[#E74C3C] text-white flex flex-col items-center p-6 relative overflow-hidden">
+						<div className="w-full h-full bg-[#E74C3C] text-white flex flex-col items-center p-6 relative overflow-hidden pointer-events-auto">
 							{/* Background - Always visible */}
 							<div className="absolute inset-0 opacity-20 pointer-events-none">
 								<Users size={400} className="absolute -bottom-20 -right-20 rotate-12 opacity-30" />
@@ -1058,6 +1096,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 																			src={u.image.versions?.small || u.image.link}
 																			alt={u.login}
 																			className="w-full h-full object-cover"
+																			crossOrigin="anonymous"
 																		/>
 																	) : (
 																		u.login?.[0]?.toUpperCase()
@@ -1103,7 +1142,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 					{/* Step 7: Bonus Projects (Over Achiever) - was previously Step 4 -> Now Step 2 */}
 					{currentStep === 2 && (
-						<div className="w-full h-full bg-[#FFD700] text-black flex flex-col items-center p-8 relative overflow-hidden">
+						<div className="w-full h-full bg-[#FFD700] text-black flex flex-col items-center p-8 relative overflow-hidden pointer-events-auto">
 							{/* Trippy Geometric BG - Always visible */}
 							<div className="absolute inset-0 z-0 opacity-20">
 								{Array.from({ length: 12 }).map((_, i) => (
@@ -1201,7 +1240,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 					{/* Step 8: Time Wrapped (Evaluations Duration) */}
 					{currentStep === 8 && (
-						<div className="w-full h-full bg-[#34495E] text-white flex flex-col items-center p-6 relative overflow-hidden">
+						<div className="w-full h-full bg-[#34495E] text-white flex flex-col items-center p-6 relative overflow-hidden pointer-events-auto">
 							{/* Background - Always visible */}
 							<div className="absolute inset-0 opacity-10 pointer-events-none">
 								<Clock size={400} className="absolute -left-20 -bottom-20 rotate-12" />
@@ -1211,48 +1250,48 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 								{!showQuote && (
 									<motion.div
 										className="relative z-10 w-full h-full flex flex-col justify-center"
-										initial={{ opacity: 0, scale: 0.9 }}
+										initial={{ opacity: 0, scale: 0.95 }}
 										animate={{ opacity: 1, scale: 1 }}
-										transition={{ duration: 0.6 }}
+										transition={{ duration: 0.4 }}
 									>
 										<motion.h2
-											className="text-5xl font-black uppercase tracking-tighter mb-10 text-right leading-none"
-											initial={{ opacity: 0, x: 30 }}
+											className="text-5xl font-black uppercase tracking-tighter mb-8 text-right leading-none"
+											initial={{ opacity: 0, x: 20 }}
 											animate={{ opacity: 1, x: 0 }}
-											transition={{ duration: 0.5, delay: 0.1 }}
+											transition={{ duration: 0.4, delay: 0.05 }}
 										>
 											Time<br />
 											<span className="text-[#3498DB]">Wrapped</span>
 										</motion.h2>
 
-										<div className="space-y-6">
+										<div className="space-y-4">
 											<motion.div
 												className="bg-white/10 p-4 rounded-xl backdrop-blur-md border-l-4 border-[#3498DB]"
-												initial={{ opacity: 0, y: 20 }}
-												animate={{ opacity: 1, y: 0 }}
-												transition={{ duration: 0.4, delay: 0.2 }}
+												initial={{ opacity: 0, x: 20 }}
+												animate={{ opacity: 1, x: 0 }}
+												transition={{ duration: 0.3, delay: 0.1 }}
 											>
 												<p className="text-xs font-bold uppercase opacity-60 mb-1">Fastest Eval</p>
 												<div className="text-3xl font-black">{fastestEval.toFixed(0)} min</div>
-												<p className="text-xs opacity-70 italic">Speedy gonzales!</p>
+												<p className="text-[10px] opacity-60 italic">Speedy gonzales!</p>
 											</motion.div>
 
 											<motion.div
 												className="bg-white/10 p-4 rounded-xl backdrop-blur-md border-l-4 border-[#E74C3C]"
-												initial={{ opacity: 0, y: 20 }}
-												animate={{ opacity: 1, y: 0 }}
-												transition={{ duration: 0.4, delay: 0.4 }}
+												initial={{ opacity: 0, x: 20 }}
+												animate={{ opacity: 1, x: 0 }}
+												transition={{ duration: 0.3, delay: 0.2 }}
 											>
 												<p className="text-xs font-bold uppercase opacity-60 mb-1">Longest Eval</p>
 												<div className="text-3xl font-black">{longestEval.toFixed(0)} min</div>
-												<p className="text-xs opacity-70 italic">We don't talk about it...</p>
+												<p className="text-[10px] opacity-60 italic">We don't talk about it...</p>
 											</motion.div>
 
 											<motion.div
 												className="bg-white/10 p-4 rounded-xl backdrop-blur-md border-l-4 border-[#2ECC71]"
-												initial={{ opacity: 0, y: 20 }}
-												animate={{ opacity: 1, y: 0 }}
-												transition={{ duration: 0.4, delay: 0.6 }}
+												initial={{ opacity: 0, x: 20 }}
+												animate={{ opacity: 1, x: 0 }}
+												transition={{ duration: 0.3, delay: 0.3 }}
 											>
 												<p className="text-xs font-bold uppercase opacity-60 mb-1">Avg Duration</p>
 												<div className="text-3xl font-black">{avgEvalTime} min</div>
@@ -1266,7 +1305,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 					{/* Step 9: Quality Check */}
 					{currentStep === 9 && (
-						<div className="w-full h-full bg-[#16213E] text-white flex flex-col items-center p-6 relative overflow-hidden">
+						<div className="w-full h-full bg-[#16213E] text-white flex flex-col items-center p-6 relative overflow-hidden pointer-events-auto">
 							{/* Fancy Background - Always visible */}
 							<div className="absolute inset-0 bg-gradient-to-br from-[#1A1A2E] via-[#16213E] to-[#0F3460] z-0" />
 							<div className="absolute top-0 right-0 w-full h-full opacity-20"
@@ -1354,7 +1393,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 					{/* Step 10: Peer Wrapped */}
 					{currentStep === 10 && (
-						<div className="w-full h-full bg-[#240046] text-white flex flex-col items-center p-6 relative overflow-hidden">
+						<div className="w-full h-full bg-[#240046] text-white flex flex-col items-center p-6 relative overflow-hidden pointer-events-auto">
 							{/* Background - Always visible */}
 							<div className="absolute inset-0 z-0">
 								<div className="absolute inset-0 bg-gradient-to-b from-[#3c096c] to-[#10002b]" />
@@ -1364,7 +1403,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 							<AnimatePresence>
 								{!showQuote && (
 									<motion.div
-										className="relative z-10 w-full h-full flex flex-col justify-center"
+										className="relative z-10 w-full h-full flex flex-col justify-center my-20"
 										initial={{ opacity: 0, scale: 0.9 }}
 										animate={{ opacity: 1, scale: 1 }}
 										transition={{ duration: 0.6 }}
@@ -1379,48 +1418,27 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 											<span className="text-[#e0aaff]">Review</span>
 										</motion.h2>
 
-										{/* Main Stats Card */}
-										<motion.div
-											className="bg-[#e0aaff] text-[#240046] p-6 rounded-3xl shadow-[8px_8px_0px_rgba(0,0,0,0.5)] mb-6 transform -rotate-1 hover:rotate-0 transition-transform duration-300"
-											initial={{ opacity: 0, x: -30 }}
-											animate={{ opacity: 1, x: 0 }}
-											transition={{ duration: 0.5, delay: 0.3 }}
-										>
-											<div className="flex items-center gap-4 mb-2">
-												<div className="text-6xl font-black">{avgPeerRating}</div>
-												<div className="flex flex-col">
-													<div className="flex text-[#ffce00] text-xl">
-														{'★'.repeat(Math.round(Number(avgPeerRating) || 0))}
-													</div>
-													<div className="text-xs font-bold uppercase tracking-widest leading-tight opacity-70">
-														Avg Rating
-													</div>
-												</div>
-											</div>
-											<p className="font-bold italic text-sm opacity-90 border-t border-[#240046]/20 pt-2 mt-2">
-												{Number(avgPeerRating) > 4.5 ? '"Certified Legend."' : '"Solid contributor."'}
-											</p>
-										</motion.div>
+
 
 										{/* Top Evaluators List */}
-										<div className="w-full mb-6">
-											<p className="text-xs font-bold uppercase tracking-widest opacity-60 mb-3 ml-2">Frequent Guests</p>
-											<div className="space-y-2">
+										<div className="w-full">
+											<p className="text-xs font-bold uppercase tracking-widest opacity-60 mb-4 ml-2">Frequent Guests</p>
+											<div className="space-y-3">
 												{topEvaluators.map((ev, i) => (
 													<motion.div
 														key={ev.name}
-														className="flex items-center justify-between bg-white/10 p-3 rounded-xl backdrop-blur-sm border border-white/5"
-														initial={{ opacity: 0, x: 20 }}
-														animate={{ opacity: 1, x: 0 }}
-														transition={{ duration: 0.4, delay: 0.5 + i * 0.1 }}
+														className="flex items-center justify-between bg-white/10 p-4 rounded-2xl backdrop-blur-md border border-white/10"
+														initial={{ opacity: 0, y: 10 }}
+														animate={{ opacity: 1, y: 0 }}
+														transition={{ duration: 0.4, delay: 0.1 + i * 0.05 }}
 													>
-														<div className="flex items-center gap-3">
-															<div className="w-6 h-6 rounded-full bg-[#e0aaff] text-[#240046] flex items-center justify-center font-bold text-xs shadow-sm">
+														<div className="flex items-center gap-4">
+															<div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#e0aaff] to-[#9d4edd] text-[#240046] flex items-center justify-center font-black text-sm">
 																{i + 1}
 															</div>
-															<span className="font-bold text-sm tracking-wide">{ev.name}</span>
+															<span className="font-bold text-base tracking-tight">{ev.name}</span>
 														</div>
-														<span className="text-xs font-mono opacity-50">{ev.count}x</span>
+														<span className="text-sm font-mono opacity-50 font-bold">{ev.count} evals</span>
 													</motion.div>
 												))}
 												{topEvaluators.length === 0 && (
@@ -1428,7 +1446,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 														className="p-4 text-center text-sm opacity-50 italic"
 														initial={{ opacity: 0 }}
 														animate={{ opacity: 1 }}
-														transition={{ duration: 0.5, delay: 0.6 }}
+														transition={{ duration: 0.3, delay: 0.4 }}
 													>
 														No evaluations yet
 													</motion.div>
@@ -1457,7 +1475,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 					{/* Step 11: Identity Stats (The 42 DNA) - was Step 12/8 */}
 					{currentStep === 11 && (
-						<div className="w-full h-full bg-[#1db954] text-black flex flex-col items-center p-6 relative overflow-hidden">
+						<div className="w-full h-full bg-[#1db954] text-black flex flex-col items-center p-6 relative overflow-hidden pointer-events-auto">
 							{/* Pattern BG - Always visible */}
 							<div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, #000 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
 
@@ -1568,7 +1586,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 					)}
 					{/* Step 12: Final Summary Card - was Step 9/13 */}
 					{currentStep === 12 && (
-						<div className="w-full h-full bg-[#121212] text-white flex flex-col items-center p-6 relative overflow-hidden">
+						<div className="w-full h-full bg-[#121212] text-white flex flex-col items-center p-6 relative overflow-hidden pointer-events-auto">
 							<div
 								id="summary-card"
 								className="w-full h-full flex flex-col bg-gradient-to-br from-[#1e1e1e] to-[#000] rounded-2xl p-6 relative"
@@ -1592,8 +1610,13 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 												transition={{ duration: 0.5, delay: 0.1 }}
 											>
 												<div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white shadow-lg shrink-0">
-													{user.image?.link ? (
-														<img src={user.image.link} alt={user.login} className="w-full h-full object-cover" />
+													{avatarDataUrl || user.image?.link ? (
+														<img
+															src={avatarDataUrl || user.image.link}
+															alt={user.login}
+															className="w-full h-full object-cover"
+															crossOrigin="anonymous"
+														/>
 													) : (
 														<div className="w-full h-full bg-gray-900 flex items-center justify-center text-xl font-black">
 															{user.login?.[0]?.toUpperCase()}
@@ -1683,11 +1706,11 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 													animate={{ opacity: 1, scale: 1 }}
 													transition={{ duration: 0.4, delay: 0.8 }}
 												>
-													<div className="text-[10px] font-bold uppercase opacity-80">Skill Level</div>
+													<div className="text-[10px] font-bold uppercase opacity-80">Evaluation Speed</div>
 													<div>
-														<div className="text-3xl font-black">Lvl {activeCursus.level?.toFixed(1)}</div>
+														<div className="text-3xl font-black">{avgEvalTime} min</div>
 														<div className="text-[10px] leading-tight opacity-90 mt-0.5">
-															Core Cursus
+															{avgEvalTime < 20 ? 'Speedy!' : 'Thorough'}
 														</div>
 													</div>
 												</motion.div>
@@ -1710,7 +1733,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 							{/* Actions (Screenshot/Share) */}
 							<motion.div
-								className="mt-6 flex gap-3 w-full"
+								className="mt-6 flex gap-3 w-full justify-center self-center "
 								initial={{ opacity: 0, y: 20 }}
 								animate={{ opacity: 1, y: 0 }}
 								transition={{ delay: 1.2 }}
@@ -1720,35 +1743,44 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 										const node = document.getElementById('summary-card');
 										if (node) {
 											try {
-												const { toPng } = await import('html-to-image');
-												const dataUrl = await toPng(node, { skipFonts: true });
-												const link = document.createElement('a');
-												link.download = `42wrapped-${user.login}-2025.png`;
-												link.href = dataUrl;
-												link.click();
+												const { toJpeg } = await import('html-to-image');
+
+												// Give the browser a micro-task to ensure everything is painted
+												await new Promise(r => setTimeout(r, 50));
+
+												const dataUrl = await toJpeg(node, {
+													quality: 0.95,
+													pixelRatio: 2,
+													backgroundColor: '#121212',
+													skipFonts: true,
+													cacheBust: true,
+													style: {
+														transform: 'none',
+													}
+												});
+
+												if (dataUrl) {
+													const link = document.createElement('a');
+													link.href = dataUrl;
+													link.download = `42wrapped-${user.login}-2025.jpg`;
+													link.click();
+												}
 											} catch (err) {
 												console.error('Failed to download image', err);
+												alert('Failed to generate image. Please try a manual screenshot.');
 											}
 										}
 									}}
-									className="flex-1 bg-white text-black font-black uppercase tracking-tighter py-4 rounded-xl shadow-[6px_6px_0px_#FFE600] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
+									className="cursor-pointer w-64 bg-white text-black font-black uppercase tracking-tighter py-4 rounded-xl shadow-[6px_6px_0px_#FFE600] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
 								>
 									Save as Image
-								</button>
-								<button
-									onClick={onClose}
-									className="bg-black/40 border-2 border-white/20 text-white font-black uppercase tracking-tighter p-4 rounded-xl"
-								>
-									Close
 								</button>
 							</motion.div>
 						</div>
 					)}
 				</div>
-
 				<MusicPlayerWidget />
 			</div>
-
 		</div>
 	);
 }

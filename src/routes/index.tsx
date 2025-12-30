@@ -133,7 +133,7 @@ function App() {
 		if (!loading) return;
 		const interval = setInterval(() => {
 			setLoadingMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
-		}, 1800);
+		}, 7200); // 7.2s for better readability
 		return () => clearInterval(interval);
 	}, [loading]);
 

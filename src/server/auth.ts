@@ -193,8 +193,8 @@ export const fetchScaleTeams = createServerFn()
 			})
 		]);
 
-		const corrected = correctedRes.ok ? await correctedRes.json() : [];
-		const corrector = correctorRes.ok ? await correctorRes.json() : [];
+		const corrected = correctedRes.ok ? (await correctedRes.json()).map((e: any) => ({ ...e, is_corrector: false })) : [];
+		const corrector = correctorRes.ok ? (await correctorRes.json()).map((e: any) => ({ ...e, is_corrector: true })) : [];
 
 		console.log(`Fetched ${corrected.length} as corrected, ${corrector.length} as corrector`);
 
