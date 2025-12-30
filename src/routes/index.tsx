@@ -133,7 +133,7 @@ function App() {
 		if (!loading) return;
 		const interval = setInterval(() => {
 			setLoadingMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
-		}, 2500); // 2.5s per message for nice cycling
+		}, 7200); // 7.2s per message for nice cycling
 		return () => clearInterval(interval);
 	}, [loading]);
 
