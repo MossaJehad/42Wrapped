@@ -44,7 +44,6 @@ function App() {
 				try {
 					// Exchange code for token
 					const tokenData = await exchangeCodeForToken({ data: code } as any);
-					console.log('Received token data:', tokenData);
 
 					if (!tokenData || !tokenData.access_token) {
 						throw new Error('Invalid token data received');
@@ -62,7 +61,6 @@ function App() {
 								userId: userData.id
 							}
 						} as any);
-						console.log("Achievements:", achievementsData);
 						setAchievements(achievementsData || []);
 					} catch (achError) {
 						console.error("Failed to fetch achievements", achError);
@@ -77,7 +75,6 @@ function App() {
 								userId: userData.id
 							}
 						} as any);
-						console.log("Locations:", locs);
 						setLocations(locs || []);
 					} catch (locError) {
 						console.error("Failed to fetch locations", locError);
@@ -91,7 +88,6 @@ function App() {
 								userId: userData.id
 							}
 						} as any);
-						console.log("Evaluations:", evals);
 						setEvaluations(evals || []);
 					} catch (evalError) {
 						console.error("Failed to fetch evaluations", evalError);
@@ -105,7 +101,6 @@ function App() {
 								userId: userData.id
 							}
 						} as any);
-						console.log("Teams:", teamsData);
 						setTeams(teamsData || []);
 					} catch (teamError) {
 						console.error("Failed to fetch teams", teamError);
@@ -223,8 +218,10 @@ function App() {
 				</div>
 			</div>
 
-			<footer className="relative z-10 py-4 text-muted-foreground font-mono text-xs uppercase tracking-widest">
+			<footer className="relative z-10 py-4 text-center text-muted-foreground font-mono text-xs uppercase tracking-widest">
 				Made for <img src="https://www.42network.org/wp-content/uploads/2024/04/42.svg" alt="42" className="inline-block w-6" /> Students
+				<br />
+				By <a href="https://profile.intra.42.fr/users/mhasoneh">Mhasoneh</a>
 			</footer>
 		</div>
 	);

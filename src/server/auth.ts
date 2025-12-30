@@ -55,7 +55,6 @@ export type AchievementUser = {
 export const exchangeCodeForToken = createServerFn({ method: "POST" })
 	.handler(async (ctx: any) => {
 		const code = ctx.data;
-		console.log('Exchanging code for token:', code);
 
 		const params = new URLSearchParams();
 		params.append('grant_type', 'authorization_code');
@@ -79,7 +78,6 @@ export const exchangeCodeForToken = createServerFn({ method: "POST" })
 		}
 
 		const data = await response.json() as TokenResponse;
-		console.log('Token exchange response:', data);
 		return data;
 	});
 
@@ -195,8 +193,6 @@ export const fetchScaleTeams = createServerFn()
 
 		const corrected = correctedRes.ok ? (await correctedRes.json()).map((e: any) => ({ ...e, is_corrector: false })) : [];
 		const corrector = correctorRes.ok ? (await correctorRes.json()).map((e: any) => ({ ...e, is_corrector: true })) : [];
-
-		console.log(`Fetched ${corrected.length} as corrected, ${corrector.length} as corrector`);
 
 		// Combine them
 		return [...corrected, ...corrector];

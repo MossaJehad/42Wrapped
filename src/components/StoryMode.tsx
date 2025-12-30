@@ -300,10 +300,6 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 	// Get the last 5 (most recent). slice(-5) takes the last 5 elements of the sorted array.
 	const displayAchievements = achievementsFiltered.slice(-5);
 
-	// Console log for debugging
-	console.log("FINAL 2025 ACHIEVEMENTS LIST:", achievementsFiltered);
-	console.log("Display Achievements:", displayAchievements);
-
 	// --- NEW DATA LOGIC FOR WRAPPED EXTENSIONS ---
 	const myId = user.id;
 	const rawEvals = extractData(evaluations);
@@ -555,7 +551,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 							<div className="relative z-10 flex flex-col items-center">
 								<div className="relative mb-8 group">
-									<div className="absolute -inset-2 bg-gradient-to-r from-yellow-400 to-pink-500 rounded-full animate-spin-slow opacity-75 blur-md" />
+									<div className="" />
 									<div className="relative w-40 h-40 rounded-full border-4 border-black overflow-hidden bg-black shadow-2xl transform transition group-hover:scale-105">
 										{avatarDataUrl || user.image?.link ? (
 											<img
@@ -1587,12 +1583,23 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 					{/* Step 12: Final Summary Card - was Step 9/13 */}
 					{currentStep === 12 && (
 						<div className="w-full h-full bg-[#121212] text-white flex flex-col items-center p-6 relative overflow-hidden pointer-events-auto">
-							<div
+							{/* Animated Background Glow */}
+							<div className="absolute inset-0 z-0">
+								<div className="absolute top-1/4 left-1/4 w-64 h-64 bg-[#E91E63] rounded-full blur-[120px] opacity-20 animate-pulse" />
+								<div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-[#4CAF50] rounded-full blur-[120px] opacity-20 animate-pulse" style={{ animationDelay: '1s' }} />
+								<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-[#FFE600] rounded-full blur-[150px] opacity-10 animate-pulse" style={{ animationDelay: '0.5s' }} />
+							</div>
+							<motion.div
 								id="summary-card"
-								className="w-full h-full flex flex-col bg-gradient-to-br from-[#1e1e1e] to-[#000] rounded-2xl p-6 relative"
+								className="w-full h-full flex flex-col bg-gradient-to-br from-[#1e1e1e] via-[#151515] to-[#000] rounded-2xl p-6 relative border border-white/10 shadow-2xl"
+								initial={{ opacity: 0, scale: 0.9, rotateX: 10 }}
+								animate={{ opacity: 1, scale: 1, rotateX: 0 }}
+								transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
 							>
 								{/* Decorative Background - Always visible */}
-								<div className="absolute inset-0 z-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
+								<div className="absolute inset-0 z-0 opacity-15" style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
+								{/* Shimmer Effect */}
+								<div className="absolute inset-0 z-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_3s_ease-in-out_infinite]" />
 
 								<AnimatePresence>
 									{!showQuote && (
@@ -1609,7 +1616,11 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 												animate={{ opacity: 1, y: 0 }}
 												transition={{ duration: 0.5, delay: 0.1 }}
 											>
-												<div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white shadow-lg shrink-0">
+												<motion.div
+													className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/80 shadow-lg shrink-0 relative"
+												>
+													{/* Avatar Glow Ring */}
+													<div className="absolute -inset-1 rounded-full blur-sm opacity-60" />
 													{avatarDataUrl || user.image?.link ? (
 														<img
 															src={avatarDataUrl || user.image.link}
@@ -1622,47 +1633,87 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 															{user.login?.[0]?.toUpperCase()}
 														</div>
 													)}
-												</div>
+												</motion.div>
 												<div className="min-w-0">
-													<h2 className="text-2xl font-black tracking-tighter leading-none text-white truncate">
+													<motion.h2
+														className="text-2xl font-black tracking-tighter leading-none text-white truncate"
+														initial={{ opacity: 0, x: -10 }}
+														animate={{ opacity: 1, x: 0 }}
+														transition={{ delay: 0.1 }}
+													>
 														{user.displayname || user.login}
-													</h2>
+													</motion.h2>
 													<p className="font-mono text-xs opacity-60">@{user.login}</p>
 												</div>
-												<div className="ml-auto">
-													<div className="bg-[#FFE600] text-black font-black text-[10px] px-2 py-1 rounded rotate-3 shadow-[2px_2px_0px_white]">
+												<motion.div
+													className="ml-auto"
+													initial={{ rotate: -20, scale: 0 }}
+													animate={{ rotate: 3, scale: 1 }}
+													transition={{ type: "spring", stiffness: 300, delay: 0.2 }}
+												>
+													<div className="bg-[#FFE600] text-black font-black text-[10px] px-2 py-1 rounded shadow-[2px_2px_0px_white]">
 														#2025
 													</div>
-												</div>
+												</motion.div>
 											</motion.div>
 
 											{/* VERDICT BANNER */}
 											<motion.div
-														className="relative w-full bg-gradient-to-r from-[#F1C40F] to-[#E67E22] text-black p-4 rounded-xl mb-4 shadow-lg transform hover:scale-[1.02] transition-transform overflow-hidden"
-														initial={{ opacity: 0, x: -30 }}
-														animate={{ opacity: 1, x: 0 }}
-														transition={{ duration: 0.6, delay: 0.3 }}
-													>
-														<div className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-1">The Verdict</div>
-														<div className="text-2xl font-black leading-tight uppercase tracking-tight">
-															{personality}
-														</div>
-														<div className="text-xs font-bold opacity-80 mt-1 leading-tight">
-															{personalityDesc}
-														</div>
-														<div className="absolute right-2 top-2 opacity-20 text-4xl pointer-events-none">👑</div>
+												className="relative w-full bg-gradient-to-r from-[#F1C40F] via-[#E67E22] to-[#F1C40F] text-black p-4 rounded-xl mb-4 shadow-lg overflow-hidden"
+												initial={{ opacity: 0, x: -30, scale: 0.95 }}
+												animate={{ opacity: 1, x: 0, scale: 1 }}
+												transition={{ duration: 0.6, delay: 0.2, type: "spring" }}
+												whileHover={{ scale: 1.02 }}
+												style={{ backgroundSize: '200% 100%' }}
+											>
+												{/* Animated Gradient Shine */}
+												<motion.div
+													className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+													initial={{ x: '-100%' }}
+													animate={{ x: '100%' }}
+													transition={{ duration: 1.5, delay: 0.4, ease: "easeInOut" }}
+												/>
+												<div className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-1">The Verdict</div>
+												<motion.div
+													className="text-2xl font-black leading-tight uppercase tracking-tight"
+													initial={{ opacity: 0, y: 10 }}
+													animate={{ opacity: 1, y: 0 }}
+													transition={{ delay: 0.2 }}
+												>
+													{personality}
+												</motion.div>
+												<div className="text-xs font-bold opacity-80 mt-1 leading-tight">
+													{personalityDesc}
+												</div>
+												<motion.div
+													className="absolute right-2 top-2 text-4xl pointer-events-none"
+													initial={{ scale: 0, rotate: -180 }}
+													animate={{ scale: 1, rotate: 0, opacity: 0.3 }}
+													transition={{ type: "spring", stiffness: 200, delay: 0.5 }}
+												>
+													👑
+												</motion.div>
 											</motion.div>
 											{/* Stats Grid */}
 											<div className="grid grid-cols-2 gap-3 flex-1 overflow-hidden">
 												<motion.div
-													className="bg-[#E91E63] p-3 rounded-xl text-white flex flex-col justify-between shadow-lg"
-													initial={{ opacity: 0, scale: 0.8 }}
-													animate={{ opacity: 1, scale: 1 }}
-													transition={{ duration: 0.4, delay: 0.5 }}
+													className="bg-gradient-to-br from-[#E91E63] to-[#C2185B] p-3 rounded-xl text-white flex flex-col justify-between shadow-lg relative overflow-hidden group"
+													initial={{ opacity: 0, scale: 0.8, y: 20 }}
+													animate={{ opacity: 1, scale: 1, y: 0 }}
+													transition={{ duration: 0.4, delay: 0.3, type: "spring" }}
+													whileHover={{ scale: 1.05, y: -2 }}
 												>
+													<div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
 													<div className="text-[10px] font-bold uppercase opacity-80">Projects</div>
 													<div>
-														<div className="text-3xl font-black">{totalProjects}</div>
+														<motion.div
+															className="text-3xl font-black"
+															initial={{ scale: 0 }}
+															animate={{ scale: 1 }}
+															transition={{ type: "spring", delay: 0.5 }}
+														>
+															{totalProjects}
+														</motion.div>
 														<div className="text-[10px] leading-tight opacity-90 mt-0.5">
 															Best: {topProjects[0]?.final_mark || 0}%
 														</div>
@@ -1670,14 +1721,23 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 												</motion.div>
 
 												<motion.div
-													className="bg-[#4CAF50] p-3 rounded-xl text-white flex flex-col justify-between shadow-lg"
-													initial={{ opacity: 0, scale: 0.8 }}
-													animate={{ opacity: 1, scale: 1 }}
-													transition={{ duration: 0.4, delay: 0.6 }}
+													className="bg-gradient-to-br from-[#4CAF50] to-[#2E7D32] p-3 rounded-xl text-white flex flex-col justify-between shadow-lg relative overflow-hidden group"
+													initial={{ opacity: 0, scale: 0.8, y: 20 }}
+													animate={{ opacity: 1, scale: 1, y: 0 }}
+													transition={{ duration: 0.4, delay: 0.3, type: "spring" }}
+													whileHover={{ scale: 1.05, y: -2 }}
 												>
+													<div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
 													<div className="text-[10px] font-bold uppercase opacity-80">Log Hours</div>
 													<div>
-														<div className="text-3xl font-black">{Math.round(totalLogMinutes / 60)}h</div>
+														<motion.div
+															className="text-3xl font-black"
+															initial={{ scale: 0 }}
+															animate={{ scale: 1 }}
+															transition={{ type: "spring", delay: 0.2 }}
+														>
+															{Math.round(totalLogMinutes / 60)}h
+														</motion.div>
 														<div className="text-[10px] leading-tight opacity-90 mt-0.5">
 															Peak Day: {peakDayShort}
 														</div>
@@ -1685,14 +1745,23 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 												</motion.div>
 
 												<motion.div
-													className="bg-[#2196F3] p-3 rounded-xl text-white flex flex-col justify-between shadow-lg"
-													initial={{ opacity: 0, scale: 0.8 }}
-													animate={{ opacity: 1, scale: 1 }}
-													transition={{ duration: 0.4, delay: 0.7 }}
+													className="bg-gradient-to-br from-[#2196F3] to-[#1565C0] p-3 rounded-xl text-white flex flex-col justify-between shadow-lg relative overflow-hidden group"
+													initial={{ opacity: 0, scale: 0.8, y: 20 }}
+													animate={{ opacity: 1, scale: 1, y: 0 }}
+													transition={{ duration: 0.2, delay: 0.7, type: "spring" }}
+													whileHover={{ scale: 1.05, y: -2 }}
 												>
+													<div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
 													<div className="text-[10px] font-bold uppercase opacity-80">Quality</div>
 													<div>
-														<div className="text-3xl font-black">{outstandingCount}</div>
+														<motion.div
+															className="text-3xl font-black"
+															initial={{ scale: 0 }}
+															animate={{ scale: 1 }}
+															transition={{ type: "spring", delay: 0.5 }}
+														>
+															{outstandingCount}
+														</motion.div>
 														<div className="text-[10px] leading-tight opacity-90 mt-0.5">
 															Outstanding
 														</div>
@@ -1700,14 +1769,23 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 												</motion.div>
 
 												<motion.div
-													className="bg-[#9C27B0] p-3 rounded-xl text-white flex flex-col justify-between shadow-lg"
-													initial={{ opacity: 0, scale: 0.8 }}
-													animate={{ opacity: 1, scale: 1 }}
-													transition={{ duration: 0.4, delay: 0.8 }}
+													className="bg-gradient-to-br from-[#9C27B0] to-[#6A1B9A] p-3 rounded-xl text-white flex flex-col justify-between shadow-lg relative overflow-hidden group"
+													initial={{ opacity: 0, scale: 0.8, y: 20 }}
+													animate={{ opacity: 1, scale: 1, y: 0 }}
+													transition={{ duration: 0.4, delay: 0.4, type: "spring" }}
+													whileHover={{ scale: 1.05, y: -2 }}
 												>
+													<div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
 													<div className="text-[10px] font-bold uppercase opacity-80">Evaluation Speed</div>
 													<div>
-														<div className="text-3xl font-black">{avgEvalTime} min</div>
+														<motion.div
+															className="text-3xl font-black"
+															initial={{ scale: 0 }}
+															animate={{ scale: 1 }}
+															transition={{ type: "spring", delay: 0.5 }}
+														>
+															{avgEvalTime} min
+														</motion.div>
 														<div className="text-[10px] leading-tight opacity-90 mt-0.5">
 															{avgEvalTime < 20 ? 'Speedy!' : 'Thorough'}
 														</div>
@@ -1717,26 +1795,26 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 											{/* Footer Branding */}
 											<motion.div
-												className="mt-4 flex justify-between items-center opacity-40 grayscale"
-												initial={{ opacity: 0 }}
-												animate={{ opacity: 0.4 }}
-												transition={{ duration: 0.5, delay: 1.0 }}
+												className="mt-4 flex justify-between items-center"
+												initial={{ opacity: 0, y: 10 }}
+												animate={{ opacity: 0.5, y: 0 }}
+												transition={{ duration: 0.5, delay: 0.3 }}
 											>
-												<div className="font-black text-xl italic tracking-tighter">42wrapped.up.railway.app</div>
+												<div className="font-black text-xl italic tracking-tighter bg-gradient-to-r from-white/60 to-white/30 bg-clip-text text-transparent">42wrapped.up.railway.app</div>
 											</motion.div>
 										</motion.div>
 									)}
 								</AnimatePresence>
-							</div>
+							</motion.div>
 
 							{/* Actions (Screenshot/Share) */}
 							<motion.div
-								className="mt-6 flex gap-3 w-full justify-center self-center "
-								initial={{ opacity: 0, y: 20 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ delay: 1.2 }}
+								className="mt-6 flex gap-3 w-full justify-center self-center"
+								initial={{ opacity: 0, y: 30, scale: 0.9 }}
+								animate={{ opacity: 1, y: 0, scale: 1 }}
+								transition={{ delay: 1.4, type: "spring", stiffness: 200 }}
 							>
-								<button
+								<motion.button
 									onClick={async () => {
 										const node = document.getElementById('summary-card');
 										if (node) {
@@ -1769,10 +1847,15 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 											}
 										}
 									}}
-									className="cursor-pointer w-64 bg-white text-black font-black uppercase tracking-tighter py-4 rounded-xl shadow-[6px_6px_0px_#FFE600] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all"
+									className="cursor-pointer w-64 bg-white text-black font-black uppercase tracking-tighter py-4 rounded-xl shadow-[6px_6px_0px_#FFE600] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all relative overflow-hidden group"
+									whileHover={{ scale: 1.05 }}
+									whileTap={{ scale: 0.95 }}
 								>
-									Save as Image
-								</button>
+									<span className="relative z-10">Save as Image</span>
+									<motion.div
+										className="absolute inset-0 transition-opacity"
+									/>
+								</motion.button>
 							</motion.div>
 						</div>
 					)}

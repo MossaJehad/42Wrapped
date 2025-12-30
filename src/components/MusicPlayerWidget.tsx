@@ -33,9 +33,7 @@ export function MusicPlayerWidget({ isPaused: externalPaused = false }: MusicPla
 		const playAudio = async () => {
 			try {
 				await audio.play();
-				console.log("Playing:", currentGenre);
 			} catch (error) {
-				console.log("Autoplay prevented. Waiting for interaction...", error);
 				// If autoplay fails, add a one-time listener to start it on any click
 				const enableAudio = () => {
 					audio.play().catch(e => console.error("Still failed to play", e));
