@@ -178,18 +178,28 @@ export const fetchLocations = createServerFn()
 export const fetchScaleTeams = createServerFn()
 	.handler(async (ctx: any) => {
 		const { token, userId } = ctx.data;
-		// Fetch evaluations (as corrected to get feedback received)
-		const url = `https://api.intra.42.fr/v2/users/${userId}/scale_teams/as_corrected?page[size]=100`;
 
-		const response = await fetch(url, {
-			headers: { Authorization: `Bearer ${token}` },
-		});
+		// Fetch both as corrected (feedback received) and as corrector (evaluations done)
+		// Filter for 2025 to ensure relevant data within the limit
+		const yearStart = "2025-01-01T00:00:00.000Z";
+		const yearEnd = "2026-01-01T00:00:00.000Z";
 
-		if (!response.ok) {
-			console.error("Failed to fetch scale teams", response.status);
-			return [];
-		}
-		return await response.json();
+		const [correctedRes, correctorRes] = await Promise.all([
+			fetch(`https://api.intra.42.fr/v2/users/${userId}/scale_teams/as_corrected?range[begin_at]=${yearStart},${yearEnd}&page[size]=100`, {
+				headers: { Authorization: `Bearer ${token}` }
+			}),
+			fetch(`https://api.intra.42.fr/v2/users/${userId}/scale_teams/as_corrector?range[begin_at]=${yearStart},${yearEnd}&page[size]=100`, {
+				headers: { Authorization: `Bearer ${token}` }
+			})
+		]);
+
+		const corrected = correctedRes.ok ? await correctedRes.json() : [];
+		const corrector = correctorRes.ok ? await correctorRes.json() : [];
+
+		console.log(`Fetched ${corrected.length} as corrected, ${corrector.length} as corrector`);
+
+		// Combine them
+		return [...corrected, ...corrector];
 	});
 
 export const fetchTeams = createServerFn()

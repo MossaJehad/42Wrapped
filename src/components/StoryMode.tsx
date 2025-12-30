@@ -13,13 +13,13 @@ interface StoryModeProps {
 	onClose?: () => void;
 }
 
-export function StoryMode({ user, achievements = [], locations = [], teams = [], onClose }: StoryModeProps) {
+export function StoryMode({ user, achievements = [], locations = [], teams = [], evaluations = [], onClose }: StoryModeProps) {
 	const [currentStep, setCurrentStep] = useState(0);
 	const [isPaused, setIsPaused] = useState(false);
 
 	// --- Data Processing for 2025 ---
 	const currentYear = 2025;
-	const totalSteps = 10; // Intro, Achievements, Projects, Skills, LogTime, Feedback, GroupProjects, Bonus, Identity, Summary
+	const totalSteps = 13;
 
 	// 1. Projects
 	const projects = user.projects_users || [];
@@ -224,6 +224,102 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 	// Console log for debugging
 	console.log("FINAL 2025 ACHIEVEMENTS LIST:", achievementsFiltered);
 	console.log("Display Achievements:", displayAchievements);
+
+	// --- NEW DATA LOGIC FOR WRAPPED EXTENSIONS ---
+	const myId = user.id;
+	const allEvals = evaluations || [];
+
+	// Filter 2025 evals
+	const evals2025 = allEvals.filter((e: any) => {
+		const d = new Date(e.filled_at || e.begin_at);
+		return d.getFullYear() === currentYear;
+	});
+
+	// 1. As Corrector (I evaluated others)
+	const asCorrector = evals2025.filter((e: any) => e.corrector?.id === myId);
+
+	// 2. As Corrected (I was evaluated)
+	const asCorrected = evals2025.filter((e: any) => e.correcteds?.some((u: any) => u.id === myId));
+
+	// --- Time Wrapped Stats ---
+	const evalDurations = asCorrector.map((e: any) => {
+		if (!e.begin_at || !e.filled_at) return null;
+		const start = new Date(e.begin_at).getTime();
+		const end = new Date(e.filled_at).getTime();
+		return (end - start) / 1000 / 60; // minutes
+	}).filter((d: any) => d !== null && d > 0) as number[];
+
+	const fastestEval = evalDurations.length ? Math.min(...evalDurations) : 0;
+	const longestEval = evalDurations.length ? Math.max(...evalDurations) : 0;
+	const avgEvalTime = evalDurations.length
+		? Math.round(evalDurations.reduce((a, b) => a + b, 0) / evalDurations.length)
+		: 0;
+
+	// --- Quality Check ---
+	const outstandingCount = asCorrected.filter((e: any) => e.final_mark && e.final_mark >= 100).length;
+
+	const correctFlags = asCorrected.map((e: any) => e.flag?.name).filter(Boolean);
+	const totalWithFlags = correctFlags.length;
+	// Assuming 'Leaks' is implied by specific flag names or lack of 'Ok' if failed?
+	// Commonly 'Ok' is good. 'Leaks' is bad.
+	const leakFlags = correctFlags.filter((f: string) => f.toLowerCase().includes('leak')).length;
+	const leakFreeRate = totalWithFlags > 0
+		? Math.round(((totalWithFlags - leakFlags) / totalWithFlags) * 100)
+		: 100;
+
+	const flagCounts: Record<string, number> = {};
+	correctFlags.forEach((f: string) => flagCounts[f] = (flagCounts[f] || 0) + 1);
+	const mostCommonFlag = Object.entries(flagCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "Clean";
+
+	// --- Peer Wrapped ---
+	const ratingsReceived = asCorrector.map((e: any) => e.feedback_rating).filter((r: any) => r !== null && r !== undefined);
+	const avgPeerRating = ratingsReceived.length
+		? (ratingsReceived.reduce((a: any, b: any) => a + b, 0) / ratingsReceived.length).toFixed(1)
+		: "N/A";
+
+	const evaluators: Record<string, number> = {};
+	asCorrected.forEach((e: any) => {
+		if (e.corrector?.login) {
+			evaluators[e.corrector.login] = (evaluators[e.corrector.login] || 0) + 1;
+		}
+	});
+	const topEvaluators = Object.entries(evaluators)
+		.sort((a, b) => b[1] - a[1])
+		.slice(0, 3)
+		.map(([name, count]) => ({ name, count }));
+
+
+
+	// Nicest feedback (5 stars + longest comment)
+	const niceFeedbacks = asCorrector.filter((e: any) => e.feedback_rating === 5 && e.feedback && e.feedback.length > 5);
+	const nicestFeedback = niceFeedbacks.sort((a: any, b: any) => b.feedback.length - a.feedback.length)[0];
+
+	// --- Personality Logic ---
+	let personality = "The Explorer";
+	let personalityDesc = "Exploring the 42 universe.";
+
+	const marks = projects2025.map((p: any) => p.final_mark || 0);
+	const mean = marks.length ? marks.reduce((a: any, b: any) => a + b, 0) / marks.length : 0;
+	const variance = marks.length ? marks.reduce((a: any, b: any) => a + Math.pow(b - mean, 2), 0) / marks.length : 0;
+	const stdDev = Math.sqrt(variance);
+
+	// Priority Logic
+	if (mean > 95 && stdDev < 15 && totalProjects >= 3) {
+		personality = "The Consistent Builder";
+		personalityDesc = "Reliable. Steady. Unbreakable code.";
+	} else if (bonusProjects.length >= 3) {
+		personality = "Bonus Hunter";
+		personalityDesc = "Why settle for 100% when you can get 125%?";
+	} else if (leakFreeRate === 100 && totalProjects >= 3) {
+		personality = "Clean Code Monk";
+		personalityDesc = "No leaks, just pure logic.";
+	} else if (avgEvalTime < 15 && evalDurations.length > 10) {
+		personality = "Evaluation Speedrunner";
+		personalityDesc = "Any% Speedrun World Record holder.";
+	} else if (totalLogMinutes > 60 * 200) { // arbitrary high number
+		personality = "The Resident";
+		personalityDesc = "Do you even pay rent at home anymore?";
+	}
 
 	// Navigation Handlers
 	const nextStep = useCallback(() => {
@@ -814,8 +910,169 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 
 
-					{/* Step 8: Identity Stats (The 42 DNA) - was previously Step 5 */}
+
+					{/* Step 8: Time Wrapped (Evaluations Duration) */}
 					{currentStep === 8 && (
+						<div className="w-full h-full bg-[#34495E] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-500 relative overflow-hidden">
+							<div className="absolute inset-0 opacity-10 pointer-events-none">
+								<Clock size={400} className="absolute -left-20 -bottom-20 rotate-12" />
+							</div>
+
+							<div className="relative z-10 w-full h-full flex flex-col justify-center">
+								<h2 className="text-5xl font-black uppercase tracking-tighter mb-10 text-right leading-none">
+									Time<br />
+									<span className="text-[#3498DB]">Wrapped</span>
+								</h2>
+
+								<div className="space-y-6">
+									<div className="bg-white/10 p-4 rounded-xl backdrop-blur-md border-l-4 border-[#3498DB] animate-in slide-in-from-bottom-4 fade-in duration-500 delay-100">
+										<p className="text-xs font-bold uppercase opacity-60 mb-1">Fastest Eval</p>
+										<div className="text-3xl font-black">{fastestEval.toFixed(0)} min</div>
+										<p className="text-xs opacity-70 italic">Speedy gonzales!</p>
+									</div>
+
+									<div className="bg-white/10 p-4 rounded-xl backdrop-blur-md border-l-4 border-[#E74C3C] animate-in slide-in-from-bottom-4 fade-in duration-500 delay-300">
+										<p className="text-xs font-bold uppercase opacity-60 mb-1">Longest Eval</p>
+										<div className="text-3xl font-black">{longestEval.toFixed(0)} min</div>
+										<p className="text-xs opacity-70 italic">We don't talk about it...</p>
+									</div>
+
+									<div className="bg-white/10 p-4 rounded-xl backdrop-blur-md border-l-4 border-[#2ECC71] animate-in slide-in-from-bottom-4 fade-in duration-500 delay-500">
+										<p className="text-xs font-bold uppercase opacity-60 mb-1">Avg Duration</p>
+										<div className="text-3xl font-black">{avgEvalTime} min</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					)}
+
+					{/* Step 9: Quality Check */}
+					{currentStep === 9 && (
+						<div className="w-full h-full bg-[#16213E] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-500 relative overflow-hidden">
+							{/* Fancy Background */}
+							<div className="absolute inset-0 bg-gradient-to-br from-[#1A1A2E] via-[#16213E] to-[#0F3460] z-0" />
+							<div className="absolute top-0 right-0 w-full h-full opacity-20"
+								style={{
+									backgroundImage: 'radial-gradient(circle at 70% 20%, rgba(76, 201, 240, 0.4) 0%, transparent 40%)'
+								}}
+							/>
+
+							{/* Floating Particles */}
+							<div className="absolute top-10 left-10 w-4 h-4 bg-[#4CC9F0] rounded-full animate-bounce duration-[3s]" />
+							<div className="absolute bottom-20 right-10 w-6 h-6 bg-[#4361EE] rounded-full animate-bounce duration-[5s] delay-700" />
+
+							<div className="relative z-10 w-full h-full flex flex-col justify-center">
+								<h2 className="text-5xl font-black uppercase tracking-tighter mb-10 text-center relative max-w-xs mx-auto">
+									<span className="relative z-10 text-transparent bg-clip-text bg-gradient-to-r from-[#4CC9F0] to-[#4361EE] drop-shadow-sm animate-in slide-in-from-top duration-700">
+										Quality<br />Control
+									</span>
+									<div className="absolute -inset-4 bg-white/5 blur-xl rounded-full z-0" />
+								</h2>
+
+								<div className="grid grid-cols-1 gap-6 w-full max-w-xs mx-auto">
+									<div className="group bg-white/5 backdrop-blur-md p-6 rounded-3xl border border-white/10 hover:bg-white/10 transition-all duration-300 hover:scale-105 border-l-4 border-l-[#4CC9F0]">
+										<div className="text-6xl font-black mb-2 bg-clip-text text-transparent bg-gradient-to-br from-white to-gray-400 group-hover:scale-110 transition-transform origin-left">
+											{outstandingCount}
+										</div>
+										<div className="text-sm font-bold uppercase tracking-widest text-[#4CC9F0] opacity-80 animate-pulse">
+											Outstanding
+										</div>
+										<div className="text-[10px] mt-1 opacity-50 font-mono">
+											Projects &gt; 100%
+										</div>
+									</div>
+
+									<div className="flex gap-4">
+										<div className="flex-1 bg-white/5 backdrop-blur-md p-4 rounded-3xl border border-white/10 border-l-4 border-l-[#4361EE] hover:-translate-y-1 transition-transform">
+											<div className="text-3xl font-black mb-1 text-white">
+												{leakFreeRate}%
+											</div>
+											<div className="text-[10px] font-bold uppercase text-[#4361EE] tracking-wider">
+												Clean Code
+											</div>
+										</div>
+										<div className="flex-1 bg-white/5 backdrop-blur-md p-4 rounded-3xl border border-white/10 border-l-4 border-l-[#F72585] hover:-translate-y-1 transition-transform delay-100">
+											<div className="text-lg font-black mb-1 truncate text-white leading-8">
+												{mostCommonFlag}
+											</div>
+											<div className="text-[10px] font-bold uppercase text-[#F72585] tracking-wider">
+												Top Flag
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					)}
+
+					{/* Step 10: Peer Wrapped */}
+					{currentStep === 10 && (
+						<div className="w-full h-full bg-[#240046] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-500 relative overflow-hidden">
+							{/* Background */}
+							<div className="absolute inset-0 z-0">
+								<div className="absolute inset-0 bg-gradient-to-b from-[#3c096c] to-[#10002b]" />
+								<div className="absolute top-0 left-0 right-0 h-64 bg-gradient-to-b from-[#5a189a]/30 to-transparent" />
+							</div>
+
+							<div className="relative z-10 w-full h-full flex flex-col justify-center">
+								<h2 className="text-5xl font-black uppercase tracking-tighter mb-8 text-center leading-none drop-shadow-[0_4px_0_rgba(0,0,0,1)] animate-in zoom-in duration-500">
+									Peer<br />
+									<span className="text-[#e0aaff]">Review</span>
+								</h2>
+
+								{/* Main Stats Card */}
+								<div className="bg-[#e0aaff] text-[#240046] p-6 rounded-3xl shadow-[8px_8px_0px_rgba(0,0,0,0.5)] mb-6 transform -rotate-1 hover:rotate-0 transition-transform duration-300">
+									<div className="flex items-center gap-4 mb-2">
+										<div className="text-6xl font-black">{avgPeerRating}</div>
+										<div className="flex flex-col">
+											<div className="flex text-[#ffce00] text-xl">
+												{'★'.repeat(Math.round(Number(avgPeerRating) || 0))}
+											</div>
+											<div className="text-xs font-bold uppercase tracking-widest leading-tight opacity-70">
+												Avg Rating
+											</div>
+										</div>
+									</div>
+									<p className="font-bold italic text-sm opacity-90 border-t border-[#240046]/20 pt-2 mt-2">
+										{Number(avgPeerRating) > 4.5 ? '"Certified Legend."' : '"Solid contributor."'}
+									</p>
+								</div>
+
+								{/* Top Evaluators List */}
+								<div className="w-full mb-6">
+									<p className="text-xs font-bold uppercase tracking-widest opacity-60 mb-3 ml-2">Frequent Guests</p>
+									<div className="space-y-2">
+										{topEvaluators.map((ev, i) => (
+											<div key={ev.name} className="flex items-center justify-between bg-white/10 p-3 rounded-xl backdrop-blur-sm border border-white/5 animate-in slide-in-from-left fade-in duration-500" style={{ animationDelay: `${i * 150}ms` }}>
+												<div className="flex items-center gap-3">
+													<div className="w-6 h-6 rounded-full bg-[#e0aaff] text-[#240046] flex items-center justify-center font-bold text-xs shadow-sm">
+														{i + 1}
+													</div>
+													<span className="font-bold text-sm tracking-wide">{ev.name}</span>
+												</div>
+												<span className="text-xs font-mono opacity-50">{ev.count}x</span>
+											</div>
+										))}
+										{topEvaluators.length === 0 && (
+											<div className="p-4 text-center text-sm opacity-50 italic">No evaluations yet</div>
+										)}
+									</div>
+								</div>
+
+								{/* Nicest Feedback */}
+								{nicestFeedback && (
+									<div className="bg-[#240046]/50 p-4 rounded-xl border border-[#e0aaff]/30 backdrop-blur-sm relative mt-auto max-h-[120px] overflow-hidden">
+										<div className="absolute -top-3 -right-2 text-2xl rotate-12 animate-pulse">❤️</div>
+										<p className="text-[10px] font-bold text-[#e0aaff] uppercase mb-1">Highlight</p>
+										<p className="text-xs italic leading-relaxed opacity-90 line-clamp-3">"{nicestFeedback.feedback}"</p>
+									</div>
+								)}
+							</div>
+						</div>
+					)}
+
+					{/* Step 11: Identity Stats (The 42 DNA) - was Step 12/8 */}
+					{currentStep === 11 && (
 						<div className="w-full h-full bg-[#1db954] text-black flex flex-col items-center p-6 animate-in slide-in-from-right duration-500 relative overflow-hidden">
 							{/* Pattern BG */}
 							<div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle, #000 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
@@ -884,8 +1141,8 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 							</div>
 						</div>
 					)}
-					{/* Step 9: Final Summary Card */}
-					{currentStep === 9 && (
+					{/* Step 12: Final Summary Card - was Step 9/13 */}
+					{currentStep === 12 && (
 						<div className="w-full h-full bg-[#121212] text-white flex flex-col items-center p-6 animate-in slide-in-from-right duration-500 relative overflow-hidden">
 							<div
 								id="summary-card"
@@ -895,99 +1152,93 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 								<div className="absolute inset-0 z-0 opacity-20" style={{ backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
 
 								{/* Header */}
-								<div className="relative z-10 flex items-center gap-4 mb-6">
-									<div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow-lg">
+								<div className="relative z-10 flex items-center gap-4 mb-4">
+									<div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white shadow-lg shrink-0">
 										{user.image?.link ? (
 											<img src={user.image.link} alt={user.login} className="w-full h-full object-cover" />
 										) : (
-											<div className="w-full h-full bg-gray-900 flex items-center justify-center text-2xl font-black">
+											<div className="w-full h-full bg-gray-900 flex items-center justify-center text-xl font-black">
 												{user.login?.[0]?.toUpperCase()}
 											</div>
 										)}
 									</div>
-									<div>
-										<h2 className="text-3xl font-black tracking-tighter leading-none text-white">
+									<div className="min-w-0">
+										<h2 className="text-2xl font-black tracking-tighter leading-none text-white truncate">
 											{user.displayname || user.login}
 										</h2>
-										<p className="font-mono text-sm opacity-60">@{user.login}</p>
+										<p className="font-mono text-xs opacity-60">@{user.login}</p>
 									</div>
 									<div className="ml-auto">
-										<div className="bg-[#FFE600] text-black font-black text-xs px-2 py-1 rounded rotate-3 shadow-[2px_2px_0px_white]">
-											2025 WRAPPED
+										<div className="bg-[#FFE600] text-black font-black text-[10px] px-2 py-1 rounded rotate-3 shadow-[2px_2px_0px_white]">
+											#2025
 										</div>
 									</div>
 								</div>
 
-								{/* Stats Grid */}
-								<div className="relative z-10 grid grid-cols-2 gap-4 flex-1">
+								{/* VERDICT BANNER (New) */}
+								<div className="relative z-10 w-full bg-gradient-to-r from-[#F1C40F] to-[#E67E22] text-black p-4 rounded-xl mb-4 shadow-lg transform hover:scale-[1.02] transition-transform">
+									<div className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-1">The Verdict</div>
+									<div className="text-2xl font-black leading-tight uppercase tracking-tight">
+										{personality}
+									</div>
+									<div className="text-xs font-bold opacity-80 mt-1 leading-tight">
+										{personalityDesc}
+									</div>
+									<div className="absolute right-2 top-2 opacity-20 text-4xl">👑</div>
+								</div>
+
+								{/* Stats Grid - Compacted */}
+								<div className="relative z-10 grid grid-cols-2 gap-3 flex-1 overflow-hidden">
 									{/* Top Projects */}
-									<div className="bg-[#E91E63] p-4 rounded-xl text-white flex flex-col justify-between shadow-lg">
-										<div className="text-xs font-bold uppercase opacity-80">Top Projects</div>
+									<div className="bg-[#E91E63] p-3 rounded-xl text-white flex flex-col justify-between shadow-lg">
+										<div className="text-[10px] font-bold uppercase opacity-80">Top Projects</div>
 										<div>
-											<div className="text-4xl font-black">{totalProjects}</div>
-											<div className="text-[10px] leading-tight opacity-90 mt-1">
-												Highest: {topProjects[0]?.final_mark || 0}%
+											<div className="text-3xl font-black">{totalProjects}</div>
+											<div className="text-[10px] leading-tight opacity-90 mt-0.5">
+												Best: {topProjects[0]?.final_mark || 0}%
 											</div>
 										</div>
 									</div>
 
-									{/* Time Stats */}
-									<div className="bg-[#3498DB] p-4 rounded-xl text-white flex flex-col justify-between shadow-lg col-span-2">
-										<div className="flex justify-between items-start">
-											<div>
-												<div className="text-xs font-bold uppercase opacity-80">Total Tracked</div>
-												<div className="text-3xl font-black">{formatDuration(totalLogMinutes)}</div>
-											</div>
-											<div className="text-right">
-												<div className="text-xs font-bold uppercase opacity-80">Longest Day</div>
-												<div className="text-xl font-black">{formatDuration(maxLogMinutes)}</div>
-											</div>
-										</div>
-
-										<div className="mt-2 pt-2 border-t border-white/20 flex justify-between items-center">
-											<div className="text-xs font-bold uppercase opacity-80">Peak Day</div>
-											<div className="text-lg font-black text-[#F1C40F]">
-												{(() => {
-													const dayCounts = [0, 0, 0, 0, 0, 0, 0];
-													dayIntervals.forEach((intervals) => {
-														intervals.forEach(i => {
-															const d = new Date(i.start).getDay();
-															dayCounts[d] += (i.end - i.start) / 1000 / 60;
-														});
-													});
-													const maxDayIndex = dayCounts.indexOf(Math.max(...dayCounts));
-													return ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][maxDayIndex];
-												})()}
+									{/* Corrected Time Stats (Compact) */}
+									<div className="bg-[#3498DB] p-3 rounded-xl text-white flex flex-col justify-between shadow-lg">
+										<div className="text-[10px] font-bold uppercase opacity-80">Tracked</div>
+										<div>
+											<div className="text-xl font-black">{formatDuration(totalLogMinutes)}</div>
+											<div className="text-[10px] opacity-80 mt-1">
+												Avg {formatDuration(avgLogMinutes)}/day
 											</div>
 										</div>
 									</div>
 
 									{/* Skills */}
-									<div className="bg-[#9B59B6] p-4 rounded-xl text-white flex flex-col justify-between shadow-lg">
-										<div className="text-xs font-bold uppercase opacity-80 mb-1">Top Skill</div>
-										<div className="text-lg font-black truncate">{topSkills[0]?.name || "N/A"}</div>
-										<div className="text-xs font-bold bg-black/20 px-2 py-0.5 rounded w-fit mt-1">
-											Lvl {activeCursus.level?.toFixed(2)}
+									<div className="bg-[#9B59B6] p-3 rounded-xl text-white flex flex-col justify-between shadow-lg col-span-2">
+										<div className="flex justify-between items-center">
+											<div className="text-[10px] font-bold uppercase opacity-80">Top Skill</div>
+											<div className="text-[10px] font-bold bg-black/20 px-2 py-0.5 rounded">
+												Lvl {activeCursus.level?.toFixed(2)}
+											</div>
 										</div>
+										<div className="text-2xl font-black mt-1 truncate">{topSkills[0]?.name || "N/A"}</div>
 									</div>
 
 									{/* Achievements */}
-									<div className="bg-[#2ECC71] p-4 rounded-xl text-black flex flex-col justify-between shadow-lg">
-										<div className="text-xs font-bold uppercase opacity-70">Unlocks</div>
-										<div className="text-4xl font-black">{achievementsFiltered.length}</div>
+									<div className="bg-[#2ECC71] p-3 rounded-xl text-black flex flex-col justify-between shadow-lg">
+										<div className="text-[10px] font-bold uppercase opacity-70">Unlocks</div>
+										<div className="text-3xl font-black">{achievementsFiltered.length}</div>
 									</div>
 
-									{/* Bonus */}
-									<div className="bg-[#F1C40F] p-4 rounded-xl text-black flex flex-col justify-between shadow-lg">
-										<div className="text-xs font-bold uppercase opacity-70">Bonus</div>
-										<div className="text-4xl font-black">{bonusProjects.length}</div>
+									{/* Peer Rating (Replaced Bonus) */}
+									<div className="bg-[#F1C40F] p-3 rounded-xl text-black flex flex-col justify-between shadow-lg">
+										<div className="text-[10px] font-bold uppercase opacity-70">Peer Rtg</div>
+										<div className="text-3xl font-black">{avgPeerRating} <span className="text-sm">★</span></div>
 									</div>
 								</div>
 
 								{/* Footer */}
-								<div className="relative z-10 mt-6 text-center">
+								<div className="relative z-10 mt-4 text-center">
 									<p className="text-[10px] font-mono opacity-50 mb-1 tracking-widest">42wrapped.up.railway.app</p>
-									<div className="font-black text-4xl tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-400 to-white opacity-20 uppercase">
+									<div className="font-black text-2xl tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-white via-gray-400 to-white opacity-20 uppercase">
 										42 Wrapped
 									</div>
 								</div>
