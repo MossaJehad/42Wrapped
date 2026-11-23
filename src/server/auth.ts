@@ -50,7 +50,17 @@ export type AchievementUser = {
 	created_at: string;
 	updated_at: string;
 	achievement: Achievement;
-}
+};
+
+const INTRA_HEADERS: HeadersInit = {
+	'User-Agent':
+		'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+	'Accept': 'application/json, text/plain, */*',
+	'Accept-Language': 'en-US,en;q=0.9,fr;q=0.8',
+	'Sec-Ch-Ua': '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
+	'Sec-Ch-Ua-Mobile': '?0',
+	'Sec-Ch-Ua-Platform': '"macOS"',
+};
 
 export const exchangeCodeForToken = createServerFn({ method: "POST" })
 	.handler(async (ctx: any) => {
@@ -72,6 +82,7 @@ export const exchangeCodeForToken = createServerFn({ method: "POST" })
 		const response = await fetch(clientConfig.tokenUrl, {
 			method: 'POST',
 			headers: {
+				...INTRA_HEADERS,
 				'Content-Type': 'application/x-www-form-urlencoded',
 			},
 			body: params,
@@ -92,6 +103,7 @@ export const fetchMe = createServerFn()
 		const token = ctx.data;
 		const response = await fetch(clientConfig.meUrl, {
 			headers: {
+				...INTRA_HEADERS,
 				Authorization: `Bearer ${token}`,
 			},
 		});
@@ -113,7 +125,7 @@ export const fetchUserAchievements = createServerFn()
 		const userAchUrl = `https://api.intra.42.fr/v2/achievements_users?filter[user_id]=${userId}&page[size]=100`;
 
 		const userAchResponse = await fetch(userAchUrl, {
-			headers: { Authorization: `Bearer ${token}` },
+			headers: { ...INTRA_HEADERS, Authorization: `Bearer ${token}` },
 		});
 
 		if (!userAchResponse.ok) {
@@ -127,7 +139,7 @@ export const fetchUserAchievements = createServerFn()
 		const allAchUrl = `https://api.intra.42.fr/v2/achievements?page[size]=100`;
 
 		const allAchResponse = await fetch(allAchUrl, {
-			headers: { Authorization: `Bearer ${token}` },
+			headers: { ...INTRA_HEADERS, Authorization: `Bearer ${token}` },
 		});
 
 		if (!allAchResponse.ok) {
@@ -169,7 +181,7 @@ export const fetchLocations = createServerFn()
 		const url = `https://api.intra.42.fr/v2/users/${userId}/locations?range[begin_at]=${dateString},2100-01-01T00:00:00.000Z&page[size]=100`;
 
 		const response = await fetch(url, {
-			headers: { Authorization: `Bearer ${token}` },
+			headers: { ...INTRA_HEADERS, Authorization: `Bearer ${token}` },
 		});
 
 		if (!response.ok) {
@@ -190,10 +202,10 @@ export const fetchScaleTeams = createServerFn()
 
 		const [correctedRes, correctorRes] = await Promise.all([
 			fetch(`https://api.intra.42.fr/v2/users/${userId}/scale_teams/as_corrected?range[begin_at]=${yearStart},${yearEnd}&page[size]=100`, {
-				headers: { Authorization: `Bearer ${token}` }
+				headers: { ...INTRA_HEADERS, Authorization: `Bearer ${token}` }
 			}),
 			fetch(`https://api.intra.42.fr/v2/users/${userId}/scale_teams/as_corrector?range[begin_at]=${yearStart},${yearEnd}&page[size]=100`, {
-				headers: { Authorization: `Bearer ${token}` }
+				headers: { ...INTRA_HEADERS, Authorization: `Bearer ${token}` }
 			})
 		]);
 
@@ -211,7 +223,7 @@ export const fetchTeams = createServerFn()
 		const url = `https://api.intra.42.fr/v2/users/${userId}/teams?page[size]=100`;
 
 		const response = await fetch(url, {
-			headers: { Authorization: `Bearer ${token}` },
+			headers: { ...INTRA_HEADERS, Authorization: `Bearer ${token}` },
 		});
 
 		if (!response.ok) {
@@ -236,7 +248,7 @@ export const fetchTeams = createServerFn()
 				const idList = Array.from(userIds).join(',');
 				const usersUrl = `https://api.intra.42.fr/v2/users?filter[id]=${idList}&page[size]=100`;
 				const usersRes = await fetch(usersUrl, {
-					headers: { Authorization: `Bearer ${token}` },
+					headers: { ...INTRA_HEADERS, Authorization: `Bearer ${token}` },
 				});
 
 				if (usersRes.ok) {
