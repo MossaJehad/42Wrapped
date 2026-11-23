@@ -138,12 +138,18 @@ function App() {
 		return () => clearInterval(interval);
 	}, [loading]);
 
-	const handleLoginParams = new URLSearchParams({
-		client_id: clientConfig.clientId,
-		redirect_uri: clientConfig.redirectUri,
-		response_type: 'code',
-		// scope: 'public' // Add scopes if needed
-	});
+	const handleConnect = (e: React.MouseEvent) => {
+		e.preventDefault();
+		const origin = (typeof window !== 'undefined' && window.location?.origin)
+			? window.location.origin
+			: clientConfig.redirectUri;
+		const params = new URLSearchParams({
+			client_id: clientConfig.clientId,
+			redirect_uri: origin,
+			response_type: 'code',
+		});
+		window.location.href = `${clientConfig.authUrl}?${params.toString()}`;
+	};
 
 	// If user is logged in and loading is finished, show the Story Mode
 	if (user && !loading) {
@@ -206,9 +212,10 @@ function App() {
 							</div>
 						</div>
 					) : (
-						<a
-							href={`${clientConfig.authUrl}?${handleLoginParams.toString()}`}
-							className="group relative inline-flex items-center justify-center w-full px-8 py-4 text-xl font-black text-primary-foreground bg-primary rounded-full transition-all duration-300 hover:scale-105 hover:shadow-[0_0_10px_-5px_var(--color-primary)] active:scale-95"
+						<button
+							type="button"
+							onClick={handleConnect}
+							className="group relative inline-flex items-center justify-center w-full px-8 py-4 text-xl font-black text-primary-foreground bg-primary rounded-full transition-all duration-300 hover:scale-105 hover:shadow-[0_0_10px_-5px_var(--color-primary)] active:scale-95 cursor-pointer"
 						>
 							<span className="mr-2">CONNECT INTRA</span>
 							<svg
@@ -219,7 +226,7 @@ function App() {
 							>
 								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7l5 5m0 0l-5 5m5-5H6" />
 							</svg>
-						</a>
+						</button>
 					)}
 				</div>
 			</div>

@@ -2,7 +2,7 @@ export const getRedirectUri = () => {
 	if (typeof window !== 'undefined' && window.location?.origin) {
 		return window.location.origin;
 	}
-	return (import.meta as any).env?.VITE_REDIRECT_URI || "https://42wrapped.up.railway.app";
+	return (import.meta as any).env?.VITE_REDIRECT_URI || '';
 };
 
 export const clientConfig = {
