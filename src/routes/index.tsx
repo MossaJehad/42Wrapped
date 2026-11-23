@@ -47,7 +47,8 @@ function App() {
 
 				try {
 					// Exchange code for token
-					const tokenData = await exchangeCodeForToken({ data: code } as any);
+					const redirectUri = typeof window !== 'undefined' ? window.location.origin : clientConfig.redirectUri;
+					const tokenData = await exchangeCodeForToken({ data: { code, redirectUri } } as any);
 
 					if (!tokenData || !tokenData.access_token) {
 						throw new Error('Invalid token data received');

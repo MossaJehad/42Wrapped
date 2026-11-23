@@ -54,14 +54,20 @@ export type AchievementUser = {
 
 export const exchangeCodeForToken = createServerFn({ method: "POST" })
 	.handler(async (ctx: any) => {
-		const code = ctx.data;
+		const raw = ctx.data;
+		const code = typeof raw === 'string' ? raw : raw?.code;
+		const redirectUri =
+			(typeof raw === 'object' && raw?.redirectUri) ||
+			process.env.REDIRECT_URI ||
+			process.env.VITE_REDIRECT_URI ||
+			clientConfig.redirectUri;
 
 		const params = new URLSearchParams();
 		params.append('grant_type', 'authorization_code');
 		params.append('client_id', clientConfig.clientId);
 		params.append('client_secret', serverConfig.clientSecret);
 		params.append('code', code);
-		params.append('redirect_uri', clientConfig.redirectUri);
+		params.append('redirect_uri', redirectUri);
 
 		const response = await fetch(clientConfig.tokenUrl, {
 			method: 'POST',
