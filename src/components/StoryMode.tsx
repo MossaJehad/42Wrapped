@@ -61,8 +61,10 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 		11: "You are what you do, not what you say you'll do.",
 	};
 
-	// --- Data Processing for 2025 ---
-	const currentYear = 2025;
+	// --- Data Processing for Current Year ---
+	const currentYear =
+		Number((import.meta as any).env?.VITE_WRAPPED_YEAR) ||
+		new Date().getFullYear();
 	const totalSteps = 13;
 
 	// Robust data extractor for TanStack RPC format
@@ -626,7 +628,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 
 								<div className="mt-12 bg-white text-black p-6 rounded-3xl border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,0.3)] w-full rotate-2 transform transition hover:rotate-0 hover:scale-105">
 									<p className="text-center font-black text-lg uppercase leading-tight">
-										Your 2025 Wrapped is served.
+										Your {currentYear} Wrapped is served.
 									</p>
 								</div>
 							</div>
@@ -719,7 +721,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 										>
 											<div className="flex justify-between items-end">
 												<div className="font-black text-sm uppercase max-w-[100px] leading-tight opacity-80">
-													Total Unlocked in 2025
+													Total Unlocked in {currentYear}
 												</div>
 												<div className="text-8xl font-black leading-none tracking-tighter drop-shadow-lg">
 													{achievementsFiltered.length}
@@ -1156,7 +1158,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 												>
 													<div className="text-center opacity-70">
 														<p className="font-bold">No group projects</p>
-														<p className="text-xs">in 2025</p>
+														<p className="text-xs">in {currentYear}</p>
 													</div>
 												</motion.div>
 											)}
@@ -1691,7 +1693,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 													transition={{ type: "spring", stiffness: 300, delay: 0.2 }}
 												>
 													<div className="bg-[#FFE600] text-black font-black text-[10px] px-2 py-1 rounded shadow-[2px_2px_0px_white]">
-														#2025
+														#{currentYear}
 													</div>
 												</motion.div>
 											</motion.div>
@@ -1839,7 +1841,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 												animate={{ opacity: 0.5, y: 0 }}
 												transition={{ duration: 0.5, delay: 0.3 }}
 											>
-												<div className="font-black text-xl italic tracking-tighter bg-gradient-to-r from-white/60 to-white/30 bg-clip-text text-transparent">42wrapped.up.railway.app</div>
+												<div className="font-black text-xl italic tracking-tighter bg-gradient-to-r from-white/60 to-white/30 bg-clip-text text-transparent">42wrapped.vercel.app</div>
 												<div className="font-black text-l tracking-tighter bg-gradient-to-r from-white/60 to-white/30 bg-clip-text text-transparent">By <a href="https://github.com/MossaJehad">Mossa Jehad</a></div>
 											</motion.div>
 										</motion.div>
@@ -1878,7 +1880,7 @@ export function StoryMode({ user, achievements = [], locations = [], teams = [],
 												if (dataUrl) {
 													const link = document.createElement('a');
 													link.href = dataUrl;
-													link.download = `42wrapped-${user.login}-2025.jpg`;
+													link.download = `42wrapped-${user.login}-${currentYear}.jpg`;
 													link.click();
 												}
 											} catch (err) {

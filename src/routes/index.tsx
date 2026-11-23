@@ -33,6 +33,10 @@ function App() {
 	const [error, setError] = useState<string | null>(null);
 	const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
 
+	const currentYear =
+		Number((import.meta as any).env?.VITE_WRAPPED_YEAR) ||
+		new Date().getFullYear();
+
 	const processedCode = useRef<string | null>(null);
 
 	useEffect(() => {
@@ -181,7 +185,7 @@ function App() {
 						<span className="text-foreground">Wrapped</span>
 					</h1>
 					<p className="text-muted-foreground/80 text-xl md:text-2xl font-bold tracking-tight font-spotify pt-4">
-						2025 EDITION
+						{currentYear} EDITION
 					</p>
 				</div>
 

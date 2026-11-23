@@ -196,9 +196,12 @@ export const fetchScaleTeams = createServerFn()
 		const { token, userId } = ctx.data;
 
 		// Fetch both as corrected (feedback received) and as corrector (evaluations done)
-		// Filter for 2025 to ensure relevant data within the limit
-		const yearStart = "2025-01-01T00:00:00.000Z";
-		const yearEnd = "2026-01-01T00:00:00.000Z";
+		// Filter for target year to ensure relevant data within the limit
+		const targetYear =
+			Number(process.env.WRAPPED_YEAR || process.env.VITE_WRAPPED_YEAR) ||
+			new Date().getFullYear();
+		const yearStart = `${targetYear}-01-01T00:00:00.000Z`;
+		const yearEnd = `${targetYear + 1}-01-01T00:00:00.000Z`;
 
 		const [correctedRes, correctorRes] = await Promise.all([
 			fetch(`https://api.intra.42.fr/v2/users/${userId}/scale_teams/as_corrected?range[begin_at]=${yearStart},${yearEnd}&page[size]=100`, {
